@@ -384,13 +384,13 @@ export function DatePicker({
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
   }, []);
-  const days = useMemo(() => {
+  const days: (Date | null)[] = useMemo(() => {
     const year = view.getFullYear(),
       month = view.getMonth();
     const offset = (new Date(year, month, 1).getDay() + 6) % 7;
     const count = new Date(year, month + 1, 0).getDate();
     return [
-      ...Array(offset).fill(null),
+      ...Array<null>(offset).fill(null),
       ...Array.from(
         { length: count },
         (_, index) => new Date(year, month, index + 1),
@@ -731,10 +731,32 @@ export function PhotoUploader({
                 style={{
                   objectPosition: `${frame.x}% ${frame.y}%`,
                   transform: `scale(${frame.zoom})`,
+                  transformOrigin: "center center",
                 }}
               />
               <span aria-hidden="true" />
-              <strong className="photo-frame-hint">Drag to position</strong>
+              <strong className="photo-frame-hint">Drag or use arrows below</strong>
+            </div>
+            <div className="photo-frame-arrows">
+              <div />
+              <button type="button" aria-label="Move up" onClick={() => setFrame((f) => ({ ...f, y: clamp(f.y - 5) }))}>
+                ↑
+              </button>
+              <div />
+              <button type="button" aria-label="Move left" onClick={() => setFrame((f) => ({ ...f, x: clamp(f.x - 5) }))}>
+                ←
+              </button>
+              <button type="button" aria-label="Centre" onClick={() => setFrame((f) => ({ ...f, x: 50, y: 50 }))} title="Reset to centre">
+                ⊙
+              </button>
+              <button type="button" aria-label="Move right" onClick={() => setFrame((f) => ({ ...f, x: clamp(f.x + 5) }))}>
+                →
+              </button>
+              <div />
+              <button type="button" aria-label="Move down" onClick={() => setFrame((f) => ({ ...f, y: clamp(f.y + 5) }))}>
+                ↓
+              </button>
+              <div />
             </div>
             <div className="photo-frame-controls">
               <Field label="Zoom">
@@ -749,7 +771,7 @@ export function PhotoUploader({
                   }
                 />
               </Field>
-              <Field label="Horizontal position">
+              <Field label="Left ↔ Right">
                 <input
                   type="range"
                   min="0"
@@ -760,7 +782,7 @@ export function PhotoUploader({
                   }
                 />
               </Field>
-              <Field label="Vertical position">
+              <Field label="Up ↕ Down">
                 <input
                   type="range"
                   min="0"
@@ -796,7 +818,17 @@ function FileImage({
   alt: string;
   style?: React.CSSProperties;
 }) {
-  const source = useMemo(() => URL.createObjectURL(file), [file]);
-  useEffect(() => () => URL.revokeObjectURL(source), [source]);
-  return <img src={source} alt={alt} style={style} />;
+  // Use useState+useEffect instead of useMemo so the object URL lifecycle is
+  // correctly sequenced: the cleanup (revokeObjectURL) only fires AFTER the
+  // component has unmounted or after the new URL is already in state — preventing
+  // the broken-img-until-refresh bug where useMemo could revoke a URL that was
+  // still referenced by an img element in the same render cycle.
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  if (!src) return <span className="img-placeholder" aria-hidden="true" />;
+  return <img src={src} alt={alt} style={style} />;
 }

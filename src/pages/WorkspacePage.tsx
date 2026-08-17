@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Bell,
@@ -211,7 +211,7 @@ export function WorkspacePage() {
           <p>
             {plan === "pro"
               ? "Your lifetime Pro access is active."
-              : "Unlock more pages, themes, and analytics for â‚¦2,000 once."}
+              : "Unlock more pages, themes, and analytics for \u20a62,000 once."}
           </p>
           {plan === "free" && <Link to="/app/upgrade">Unlock Pro</Link>}
         </div>
@@ -283,7 +283,7 @@ function Boards({ pages, wishes, loading }: { pages: OwnerPage[]; wishes: OwnerW
         <div><strong>{wishes.filter((wish) => wish.visibility === "private").length}</strong><span>Private wishes</span><small>Only visible to you</small></div>
       </section>
       {loading ? (
-        <section className="surface fresh-start">Loading your Birthday Pagesâ€¦</section>
+        <section className="surface fresh-start">Loading your Birthday Pages…</section>
       ) : pages.length ? (
         <section className="owner-page-list">
           {pages.map((page) => (
@@ -327,7 +327,7 @@ function Wishes({ wishes, setWishes, setToast }: { wishes: OwnerWish[]; setWishe
   return <section className="owner-page-list">
     <div className="settings-nav">{(["all", "public", "private", "hidden"] as const).map((value) => <button className={filter === value ? "active" : ""} key={value} onClick={() => setFilter(value)}>{value}</button>)}</div>
     {filtered.length ? filtered.map((wish) => <article className="surface owner-page-card" key={wish.id}>
-      <div><span className="status-badge">{wish.visibility === "private" ? <><Lock /> private</> : wish.moderation_status}</span><h2>{wish.visitor_name}</h2><p>{wish.message}</p><small>{wish.birthday_pages?.celebrant_name} Â· {new Intl.DateTimeFormat("en-NG", { dateStyle: "medium" }).format(new Date(wish.created_at))}</small></div>
+      <div><span className="status-badge">{wish.visibility === "private" ? <><Lock /> private</> : wish.moderation_status}</span><h2>{wish.visitor_name}</h2><p>{wish.message}</p><small>{wish.birthday_pages?.celebrant_name} · {new Intl.DateTimeFormat("en-NG", { dateStyle: "medium" }).format(new Date(wish.created_at))}</small></div>
       <div className="owner-page-actions">{wish.moderation_status === "hidden" || wish.moderation_status === "pending" ? <Button variant="secondary" onClick={() => void update(wish, "published")}><Eye /> Publish</Button> : <Button variant="secondary" onClick={() => void update(wish, "hidden")}><Eye /> Hide</Button>}<Button variant="danger" onClick={() => void remove(wish.id)}><Trash /> Delete</Button></div>
     </article>) : <Empty icon={<Heart />} title="No wishes here" copy="Wishes matching this view will appear here." />}
   </section>;
@@ -413,10 +413,10 @@ function Transfers({ receipts }: { receipts: TransferReceipt[] }) {
 }
 function Analytics({ events, plan }: { events: PageEvent[]; plan: "free" | "pro" }) {
   if (plan !== "pro")
-    return <section className="surface fresh-start"><Empty icon={<ChartLine />} title="Understand every interaction with Pro" copy="See page views, unique visitors, wishlist unlocks, gift clicks, bank copies, and WhatsApp intent." action={<Link className="button primary" to="/app/upgrade">Unlock Pro for â‚¦2,000</Link>} /></section>;
+    return <section className="surface fresh-start"><Empty icon={<ChartLine />} title="Understand every interaction with Pro" copy="See page views, unique visitors, wishlist unlocks, gift clicks, bank copies, and WhatsApp intent." action={<Link className="button primary" to="/app/upgrade">Unlock Pro for ₦2,000</Link>} /></section>;
   const count = (name: string) => events.filter((event) => event.event_name === name).length;
   const uniqueVisitors = new Set(events.filter((event) => event.event_name === "page_view").map((event) => event.visitor_hash).filter(Boolean)).size;
-  return <><section className="metrics"><div><strong>{count("page_view")}</strong><span>Page views</span><small>{uniqueVisitors} unique visitors</small></div><div><strong>{count("wishlist_unlocked")}</strong><span>Wishlist unlocks</span><small>{count("gift_clicked")} purchase clicks</small></div><div><strong>{count("whatsapp_intent")}</strong><span>WhatsApp intents</span><small>{count("bank_copied")} bank copies</small></div></section><section className="surface fresh-start"><h2>Birthday funnel</h2><p>{uniqueVisitors} visitors â†’ {count("wish_submitted")} wishes â†’ {count("wishlist_unlocked")} unlocks â†’ {count("gift_clicked") + count("bank_copied") + count("whatsapp_intent")} gift interactions.</p></section></>;
+  return <><section className="metrics"><div><strong>{count("page_view")}</strong><span>Page views</span><small>{uniqueVisitors} unique visitors</small></div><div><strong>{count("wishlist_unlocked")}</strong><span>Wishlist unlocks</span><small>{count("gift_clicked")} purchase clicks</small></div><div><strong>{count("whatsapp_intent")}</strong><span>WhatsApp intents</span><small>{count("bank_copied")} bank copies</small></div></section><section className="surface fresh-start"><h2>Birthday funnel</h2><p>{uniqueVisitors} visitors → {count("wish_submitted")} wishes → {count("wishlist_unlocked")} unlocks → {count("gift_clicked") + count("bank_copied") + count("whatsapp_intent")} gift interactions.</p></section></>;
 }
 
 function Settings({
@@ -434,6 +434,7 @@ function Settings({
 }) {
   const [busy, setBusy] = useState(false);
   const phoneHint = useMemo(() => normalizePhone(profile.default_whatsapp_e164), [profile.default_whatsapp_e164]);
+
   const enableNotifications = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) {
       setToast("This browser does not support notifications");
@@ -445,67 +446,94 @@ function Settings({
     window.localStorage.setItem("huraay_wish_notifications", String(enabled));
     setToast(enabled ? "Live wish notifications enabled" : "Notifications were not enabled");
   };
+
   const save = async (event: React.FormEvent) => {
-    event.preventDefault(); setBusy(true);
-    try { await api.updateProfile({ full_name: profile.full_name, default_whatsapp_e164: phoneHint || null }); setToast("Profile changes saved"); }
-    catch (error) { setToast(error instanceof Error ? error.message : "Profile could not be saved"); }
-    finally { setBusy(false); }
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await api.updateProfile({ full_name: profile.full_name, default_whatsapp_e164: phoneHint || null });
+      setToast("Profile changes saved");
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Profile could not be saved");
+    } finally {
+      setBusy(false);
+    }
   };
+
+  const initial = profile.full_name?.[0]?.toUpperCase() || "H";
+
   return (
-    <section className="surface settings-form">
-      <h2>Profile details</h2>
-      <p>These details help Huraay personalize page creation.</p>
-      <form onSubmit={save}>
-        <label>
-          Full name
-          <input
-            value={profile.full_name}
-            onChange={(event) =>
-              setProfile((current) => ({ ...current, full_name: event.target.value }))
-            }
-            required
-          />
-        </label>
-        <label>
-          Email address
-          <input value={profile.email} type="email" disabled />
-        </label>
-        <label>
-          Default WhatsApp number
-          <input
-            value={profile.default_whatsapp_e164}
-            inputMode="tel"
-            onChange={(event) =>
-              setProfile((current) => ({
-                ...current,
-                default_whatsapp_e164: event.target.value,
-              }))
-            }
-          />
-          <small>
-            {phoneHint
-              ? `Saved as ${phoneHint}`
-              : "Add a valid international or Nigerian number"}
-          </small>
-        </label>
-        <div className="form-actions">
-          <Button disabled={busy}>{busy ? "Savingâ€¦" : "Save changes"}</Button>
+    <div className="settings-layout">
+      {/* Profile hero */}
+      <div className="settings-hero surface">
+        <div className="settings-avatar">{initial}</div>
+        <div className="settings-hero-info">
+          <h2>{profile.full_name || "Your profile"}</h2>
+          <span>{profile.email}</span>
         </div>
-      </form>
-      <div className="notification-card">
-        <div>
-          <strong>Wish notifications</strong>
-          <p>
-            {notificationsEnabled
-              ? "Browser notifications are on for new wishes."
-              : "Get alerted when a new wish comes in."}
-          </p>
-        </div>
-        <Button variant="secondary" onClick={() => void enableNotifications()}>
-          {notificationsEnabled ? "Enabled" : "Enable notifications"}
-        </Button>
       </div>
-    </section>
+
+      {/* Profile form */}
+      <section className="surface settings-card">
+        <div className="settings-card-head">
+          <SlidersHorizontal />
+          <div>
+            <h3>Profile details</h3>
+            <p>Your name is shown on birthday pages you create.</p>
+          </div>
+        </div>
+        <form onSubmit={save} className="settings-fields">
+          <label className="field">
+            <span>Full name</span>
+            <input
+              value={profile.full_name}
+              onChange={(e) => setProfile((c) => ({ ...c, full_name: e.target.value }))}
+              required
+              placeholder="Your full name"
+            />
+          </label>
+          <label className="field">
+            <span>Email address</span>
+            <input value={profile.email} type="email" disabled />
+          </label>
+          <label className="field">
+            <span>Default WhatsApp number</span>
+            <input
+              value={profile.default_whatsapp_e164}
+              inputMode="tel"
+              placeholder="+234 801 234 5678"
+              onChange={(e) => setProfile((c) => ({ ...c, default_whatsapp_e164: e.target.value }))}
+            />
+            <small>{phoneHint ? `Saved as ${phoneHint}` : "Add a valid international or Nigerian number"}</small>
+          </label>
+          <div className="settings-save-row">
+            <Button disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
+          </div>
+        </form>
+      </section>
+
+      {/* Notifications */}
+      <section className="surface settings-card">
+        <div className="settings-card-head">
+          <Bell />
+          <div>
+            <h3>Wish notifications</h3>
+            <p>Get a browser alert the moment someone leaves a wish.</p>
+          </div>
+        </div>
+        <div className="settings-notification-row">
+          <span className={`notif-status ${notificationsEnabled ? "on" : "off"}`}>
+            {notificationsEnabled ? "\u2713 Enabled" : "Disabled"}
+          </span>
+          <Button
+            variant={notificationsEnabled ? "secondary" : "primary"}
+            onClick={() => void enableNotifications()}
+          >
+            {notificationsEnabled ? "Disable" : "Enable notifications"}
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }
 

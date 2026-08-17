@@ -43,6 +43,8 @@ function parseTransferDetails(input: {
   return { bankName, accountNumber, accountName };
 }
 
+let pendingRefresh: Promise<void> | null = null;
+
 async function requireUser(
   client: ReturnType<typeof requireSupabase>,
   message: string,
@@ -57,16 +59,26 @@ async function requireUser(
 
   if (!session?.user) throw new Error(message);
 
-  // If the access token is already expired, explicitly refresh it now.
-  // refreshSession() uses the refresh token to obtain a new access token and
-  // updates the client's internal state so all subsequent queries use the new JWT.
   if (session.expires_at && session.expires_at * 1000 < Date.now()) {
-    const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
-    if (refreshError || !refreshed.session) {
-      // Refresh token is also expired — the user must sign in again.
+    if (!pendingRefresh) {
+      pendingRefresh = client.auth
+        .refreshSession()
+        .then(({ error }) => {
+          if (error) throw new Error("Your session has expired. Please sign in again.");
+        })
+        .finally(() => {
+          pendingRefresh = null;
+        });
+    }
+    try {
+      await pendingRefresh;
+    } catch {
       throw new Error("Your session has expired. Please sign in again.");
     }
-    session = refreshed.session;
+    // Re-read the session now that the client's token has been refreshed.
+    const { data: fresh } = await client.auth.getSession();
+    session = fresh.session;
+    if (!session?.user) throw new Error("Your session has expired. Please sign in again.");
   }
 
   return session.user;

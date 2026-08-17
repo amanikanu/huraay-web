@@ -20,8 +20,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(isSupabaseConfigured);
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    // On mount, check whether the stored session's access token is already expired.
+    // autoRefreshToken only fires proactively (before expiry) — it cannot rescue a
+    // token that expired while the browser tab was closed. We call refreshSession()
+    // here so the Supabase client has a valid JWT before any component fires its
+    // first API call, eliminating the cascade of 401s on app load.
+    supabase.auth.getSession().then(async ({ data }) => {
+      let current = data.session;
+      if (current?.expires_at && current.expires_at * 1000 < Date.now()) {
+        const { data: refreshed } = await supabase!.auth.refreshSession();
+        current = refreshed.session ?? current;
+      }
+      setSession(current);
       setLoading(false);
     });
     const { data } = supabase.auth.onAuthStateChange((_event, next) =>

@@ -47,20 +47,26 @@ async function requireUser(
   client: ReturnType<typeof requireSupabase>,
   message: string,
 ) {
-  // Use the locally cached session — no live network roundtrip to /auth/v1/user.
-  // The Supabase client's autoRefreshToken handles token renewal in the background.
-  // Calling getUser() here is unnecessary and causes 403 console errors when the
-  // token is expired, which then cascades into 401s on every subsequent DB query.
+  // getSession() reads the locally cached session from localStorage.
+  // It does NOT refresh an already-expired JWT — that is only done proactively
+  // by autoRefreshToken before the token expires. If the page loads with a
+  // token that is already past its expiry, every downstream DB query will get
+  // a 401 because the Bearer header contains a stale JWT.
   const { data: sessionData } = await client.auth.getSession();
-  const session = sessionData.session;
+  let session = sessionData.session;
 
   if (!session?.user) throw new Error(message);
 
-  // Detect a demonstrably expired token so we can surface a clean error
-  // instead of letting downstream RLS queries silently fail with 401.
-  const expiresAt = session.expires_at; // unix seconds
-  if (expiresAt && expiresAt * 1000 < Date.now()) {
-    throw new Error("Your session has expired. Please sign in again.");
+  // If the access token is already expired, explicitly refresh it now.
+  // refreshSession() uses the refresh token to obtain a new access token and
+  // updates the client's internal state so all subsequent queries use the new JWT.
+  if (session.expires_at && session.expires_at * 1000 < Date.now()) {
+    const { data: refreshed, error: refreshError } = await client.auth.refreshSession();
+    if (refreshError || !refreshed.session) {
+      // Refresh token is also expired — the user must sign in again.
+      throw new Error("Your session has expired. Please sign in again.");
+    }
+    session = refreshed.session;
   }
 
   return session.user;
@@ -622,12 +628,13 @@ export const api = {
     const whatsapp = text(input.whatsapp);
     const theme = text(input.theme).trim();
     const transfer = parseTransferDetails(input);
-    const { data: entitlement, error: entitlementError } = await client
+    const { data: entitlement } = await client
       .from("account_entitlements")
       .select("plan")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (entitlementError) throw entitlementError;
+    // If the entitlement query fails for any reason, default to free.
+    // The page-count check below still enforces the free-tier limit correctly.
     const { count: pageCount, error: pageCountError } = await client
       .from("birthday_pages")
       .select("id", { count: "exact", head: true })

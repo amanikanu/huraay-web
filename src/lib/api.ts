@@ -47,19 +47,23 @@ async function requireUser(
   client: ReturnType<typeof requireSupabase>,
   message: string,
 ) {
+  // Use the locally cached session — no live network roundtrip to /auth/v1/user.
+  // The Supabase client's autoRefreshToken handles token renewal in the background.
+  // Calling getUser() here is unnecessary and causes 403 console errors when the
+  // token is expired, which then cascades into 401s on every subsequent DB query.
   const { data: sessionData } = await client.auth.getSession();
-  const sessionUser = sessionData.session?.user ?? null;
-  if (!sessionUser) throw new Error(message);
+  const session = sessionData.session;
 
-  try {
-    const { data, error } = await client.auth.getUser();
-    if (error) throw error;
-    if (data.user) return data.user;
-  } catch {
-    return sessionUser;
+  if (!session?.user) throw new Error(message);
+
+  // Detect a demonstrably expired token so we can surface a clean error
+  // instead of letting downstream RLS queries silently fail with 401.
+  const expiresAt = session.expires_at; // unix seconds
+  if (expiresAt && expiresAt * 1000 < Date.now()) {
+    throw new Error("Your session has expired. Please sign in again.");
   }
 
-  return sessionUser;
+  return session.user;
 }
 
 export const api = {

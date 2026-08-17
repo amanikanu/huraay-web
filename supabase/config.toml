@@ -1,0 +1,31 @@
+project_id = "huraay"
+
+[functions.write-wish]
+verify_jwt = true
+
+[functions.public-page]
+verify_jwt = false
+
+[functions.submit-birthday-wish]
+verify_jwt = false
+
+[functions.protected-wishlist]
+verify_jwt = false
+
+[functions.paystack-initialize]
+verify_jwt = true
+
+[functions.paystack-webhook]
+verify_jwt = false
+
+[functions.submit-manual-payment]
+verify_jwt = true
+
+[functions.review-manual-payment]
+verify_jwt = true
+
+[functions.admin-payments]
+verify_jwt = true
+
+[functions.record-page-event]
+verify_jwt = false

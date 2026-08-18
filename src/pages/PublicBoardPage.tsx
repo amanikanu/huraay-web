@@ -67,6 +67,7 @@ export function PublicBoardPage() {
   const [celebrate, setCelebrate] = useState(false);
   const [toast, setToast] = useState("");
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [unlockedModalOpen, setUnlockedModalOpen] = useState(false);
   useEffect(() => {
     const meta = document.querySelector('meta[name="robots"]');
     const previous = meta?.getAttribute("content");
@@ -207,35 +208,25 @@ export function PublicBoardPage() {
         <section className="wish-wall birthday-container">
           <div className="birthday-section-head">
             <div>
-              <span>Birthday Wish Wall</span>
-              <h2>Love, in everyone’s words.</h2>
+              <span>Celebration Feed</span>
+              <h2>Love & Wishes Wall</h2>
             </div>
-            <strong>{data.wish_count}</strong>
+            <div className="wish-count-badge">
+              <Heart weight="fill" />
+              <span>{data.wish_count} {data.wish_count === 1 ? "Wish" : "Wishes"}</span>
+            </div>
           </div>
           {wishes.length ? (
-            <div className="wish-masonry">
+            <div className="social-wish-feed">
               {wishes.map((wish, index) => (
-                <motion.article
-                  className={`birthday-wish-card variation-${index % 3}`}
+                <SocialWishCard
                   key={wish.id}
-                  initial={{ opacity: 0, y: 14 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                >
-                  <div>
-                    {wish.selected_photo_id && (
-                      <span>{wish.visitor_name[0]}</span>
-                    )}
-                    <small>
-                      {new Date(wish.created_at).toLocaleDateString("en-NG", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </small>
-                  </div>
-                  <p>{wish.message}</p>
-                  <strong>{wish.visitor_name}</strong>
-                </motion.article>
+                  wish={wish}
+                  index={index}
+                  celebrantName={page.celebrant_name}
+                  photoUrl={photoUrl}
+                  photos={photos}
+                />
               ))}
             </div>
           ) : (
@@ -251,7 +242,7 @@ export function PublicBoardPage() {
             />
           )}
         </section>
-        <section className="wishlist-zone birthday-container">
+        <section id="wishlist-zone" className="wishlist-zone birthday-container">
           <AnimatePresence mode="wait">
             {!unlocked ? (
               <motion.div
@@ -379,10 +370,32 @@ export function PublicBoardPage() {
             setCelebrate(true);
             setWishOpen(false);
             await unlock(page.id);
-            setTimeout(() => setCelebrate(false), 1800);
+            // Instantly re-fetch page data so the newly posted wish appears on the wall immediately!
+            api
+              .publicBirthdayPage(slug)
+              .then((res) => setData(res))
+              .catch(() => undefined);
+            setUnlockedModalOpen(true);
+            setTimeout(() => {
+              document
+                .getElementById("wishlist-zone")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }, 350);
+            setTimeout(() => setCelebrate(false), 2400);
           }}
         />
       )}
+      <WishlistUnlockedDialog
+        open={unlockedModalOpen}
+        celebrantName={page.celebrant_name}
+        onClose={() => setUnlockedModalOpen(false)}
+        onViewWishlist={() => {
+          setUnlockedModalOpen(false);
+          document
+            .getElementById("wishlist-zone")
+            ?.scrollIntoView({ behavior: "smooth" });
+        }}
+      />
       <TransferReceiptDialog
         open={receiptOpen}
         pageId={page.id}
@@ -783,6 +796,161 @@ function TransferReceiptDialog({
           </Button>
         </div>
       </form>
+    </Dialog>
+  );
+}
+
+function SocialWishCard({
+  wish,
+  index,
+  celebrantName,
+  photoUrl,
+  photos,
+}: {
+  wish: BirthdayWish;
+  index: number;
+  celebrantName: string;
+  photoUrl: (p: string) => string;
+  photos: PagePhoto[];
+}) {
+  const [likes, setLikes] = useState(() => Math.floor(Math.random() * 5) + 1);
+  const [liked, setLiked] = useState(false);
+  const [reaction, setReaction] = useState<string | null>(null);
+
+  const photo = photos.find((p) => p.id === wish.selected_photo_id);
+  const avatarColors = [
+    "linear-gradient(135deg, #e85d3f 0%, #ee3a84 100%)",
+    "linear-gradient(135deg, #6223cf 0%, #9d4edd 100%)",
+    "linear-gradient(135deg, #2b9348 0%, #55a630 100%)",
+    "linear-gradient(135deg, #d90429 0%, #f72585 100%)",
+    "linear-gradient(135deg, #0077b6 0%, #00b4d8 100%)",
+  ];
+  const avatarBg = avatarColors[index % avatarColors.length];
+
+  const timeAgo = useMemo(() => {
+    const diff = Math.floor((Date.now() - new Date(wish.created_at).getTime()) / 1000);
+    if (diff < 60) return "Just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return new Date(wish.created_at).toLocaleDateString("en-NG", {
+      day: "numeric",
+      month: "short",
+    });
+  }, [wish.created_at]);
+
+  const toggleLike = () => {
+    if (liked) {
+      setLikes((l) => l - 1);
+      setLiked(false);
+    } else {
+      setLikes((l) => l + 1);
+      setLiked(true);
+    }
+  };
+
+  return (
+    <motion.article
+      className="social-wish-card"
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.28, delay: (index % 4) * 0.05 }}
+    >
+      <header className="social-wish-header">
+        <div className="social-avatar" style={{ background: avatarBg }}>
+          {wish.visitor_name[0]?.toUpperCase() || "H"}
+        </div>
+        <div className="social-author">
+          <strong>{wish.visitor_name}</strong>
+          <small>
+            <span>Guest</span> · {timeAgo}
+          </small>
+        </div>
+        <span className="social-badge">
+          {wish.visibility === "private" ? "🔒 Private" : "✨ Wish"}
+        </span>
+      </header>
+
+      {photo && (
+        <div className="social-photo-attachment">
+          <img
+            src={photoUrl(photo.storage_path)}
+            alt={photo.alt_text || `Photo selected for ${celebrantName}`}
+          />
+        </div>
+      )}
+
+      <div className="social-wish-body">
+        <p>"{wish.message}"</p>
+      </div>
+
+      <footer className="social-wish-footer">
+        <div className="social-reactions">
+          <button
+            type="button"
+            className={`like-button ${liked ? "liked" : ""}`}
+            onClick={toggleLike}
+            aria-label="Like wish"
+          >
+            <Heart weight={liked ? "fill" : "regular"} />
+            <span>{likes}</span>
+          </button>
+
+          <div className="emoji-bar">
+            {["🥳", "💖", "🎉", "🥂"].map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                className={`emoji-btn ${reaction === emoji ? "active" : ""}`}
+                onClick={() => setReaction(reaction === emoji ? null : emoji)}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      </footer>
+    </motion.article>
+  );
+}
+
+function WishlistUnlockedDialog({
+  open,
+  celebrantName,
+  onClose,
+  onViewWishlist,
+}: {
+  open: boolean;
+  celebrantName: string;
+  onClose: () => void;
+  onViewWishlist: () => void;
+}) {
+  return (
+    <Dialog
+      open={open}
+      title="🎉 Wish Published & Wishlist Unlocked!"
+      description={`Your birthday wish for ${celebrantName} is published! The wishlist and bank transfer details are now unlocked below.`}
+      onClose={onClose}
+      className="unlocked-dialog"
+    >
+      <div className="unlocked-modal-content">
+        <div className="unlocked-icon-badge">
+          <Gift weight="fill" />
+        </div>
+        <p>
+          Thank you for celebrating {celebrantName}! Explore the unlocked gift ideas or send birthday money directly.
+        </p>
+        <div className="unlocked-modal-actions">
+          <Button
+            onClick={() => {
+              onClose();
+              onViewWishlist();
+            }}
+          >
+            View Gift Ideas & Bank Details <ArrowRight />
+          </Button>
+        </div>
+      </div>
     </Dialog>
   );
 }

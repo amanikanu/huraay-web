@@ -72,6 +72,7 @@ export interface BirthdayWish {
   selected_photo_id: string;
   created_at: string;
   pinned_at?: string | null;
+  visibility?: "public" | "private";
 }
 export interface ProtectedWishlistItem {
   id: string;

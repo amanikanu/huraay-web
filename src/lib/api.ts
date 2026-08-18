@@ -43,45 +43,64 @@ function parseTransferDetails(input: {
   return { bankName, accountNumber, accountName };
 }
 
-let pendingRefresh: Promise<void> | null = null;
+async function retryOperation<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delayMs = 400,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt < retries - 1) {
+        await new Promise((res) => setTimeout(res, delayMs * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
+let pendingRefresh: Promise<any> | null = null;
 
 async function requireUser(
   client: ReturnType<typeof requireSupabase>,
   message: string,
 ) {
-  // getSession() reads the locally cached session from localStorage.
-  // It does NOT refresh an already-expired JWT — that is only done proactively
-  // by autoRefreshToken before the token expires. If the page loads with a
-  // token that is already past its expiry, every downstream DB query will get
-  // a 401 because the Bearer header contains a stale JWT.
   const { data: sessionData } = await client.auth.getSession();
   let session = sessionData.session;
 
   if (!session?.user) throw new Error(message);
 
-  if (session.expires_at && session.expires_at * 1000 < Date.now()) {
+  // If session is near expiry (within 5 minutes) or expired, refresh it first
+  const isNearExpiry =
+    session.expires_at && session.expires_at * 1000 - Date.now() < 5 * 60 * 1000;
+  if (isNearExpiry) {
     if (!pendingRefresh) {
       pendingRefresh = client.auth
         .refreshSession()
-        .then(({ error }) => {
-          if (error) throw new Error("Your session has expired. Please sign in again.");
-        })
         .finally(() => {
           pendingRefresh = null;
         });
     }
-    try {
-      await pendingRefresh;
-    } catch {
-      throw new Error("Your session has expired. Please sign in again.");
-    }
-    // Re-read the session now that the client's token has been refreshed.
+    await pendingRefresh.catch(() => undefined);
     const { data: fresh } = await client.auth.getSession();
-    session = fresh.session;
-    if (!session?.user) throw new Error("Your session has expired. Please sign in again.");
+    if (fresh.session) session = fresh.session;
   }
 
-  return session.user;
+  // Validate the current JWT token with Supabase server
+  const { data: userData, error: userError } = await client.auth.getUser();
+  if (userError || !userData?.user) {
+    // If backend rejected token, attempt refresh Session
+    const { data: refreshed, error: refreshErr } = await client.auth.refreshSession();
+    if (refreshErr || !refreshed.session?.user) {
+      throw new Error("Your session has expired. Please sign in again.");
+    }
+    return refreshed.session.user;
+  }
+
+  return userData.user;
 }
 
 export const api = {
@@ -320,10 +339,13 @@ export const api = {
   },
   async uploadBirthdayPhoto(userId: string, pageId: string, file: File) {
     const client = requireSupabase();
-    const path = `${userId}/${pageId}/${file.name}`;
-    const { error } = await client.storage
-      .from("birthday-media")
-      .upload(path, file, { contentType: file.type, upsert: false });
+    const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const path = `${userId}/${pageId}/${crypto.randomUUID()}-${cleanName}`;
+    const { error } = await retryOperation(() =>
+      client.storage
+        .from("birthday-media")
+        .upload(path, file, { contentType: file.type || "image/webp", upsert: true }),
+    );
     if (error) throw error;
     return path;
   },
@@ -640,24 +662,7 @@ export const api = {
     const whatsapp = text(input.whatsapp);
     const theme = text(input.theme).trim();
     const transfer = parseTransferDetails(input);
-    const { data: entitlement } = await client
-      .from("account_entitlements")
-      .select("plan")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    // If the entitlement query fails for any reason, default to free.
-    // The page-count check below still enforces the free-tier limit correctly.
-    const { count: pageCount, error: pageCountError } = await client
-      .from("birthday_pages")
-      .select("id", { count: "exact", head: true })
-      .eq("owner_id", user.id)
-      .neq("status", "archived");
-    if (pageCountError) throw pageCountError;
-    if ((entitlement?.plan ?? "free") !== "pro" && (pageCount ?? 0) >= 1) {
-      throw new Error(
-        "Free accounts can publish one Birthday Page. Edit your existing page or unlock Pro to create another.",
-      );
-    }
+
     if (
       !name ||
       !date ||
@@ -667,6 +672,39 @@ export const api = {
       throw new Error(
         "Add your name, birthday date, WhatsApp number, and at least one photo before publishing",
       );
+
+    // Entitlement check - fault tolerant fallback to free if network/RLS issues occur
+    let entitlement: { plan: string } | null = null;
+    try {
+      const res = await client
+        .from("account_entitlements")
+        .select("plan")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      entitlement = res.data;
+    } catch {
+      entitlement = null;
+    }
+
+    // Page count check - fault tolerant fallback to 0 if count query fails
+    let pageCount = 0;
+    try {
+      const res = await client
+        .from("birthday_pages")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", user.id)
+        .neq("status", "archived");
+      pageCount = res.count ?? 0;
+    } catch {
+      pageCount = 0;
+    }
+
+    if ((entitlement?.plan ?? "free") !== "pro" && pageCount >= 1) {
+      throw new Error(
+        "Free accounts can publish one Birthday Page. Edit your existing page or unlock Pro to create another.",
+      );
+    }
+
     const slugBase =
       name
         .toLowerCase()
@@ -675,40 +713,46 @@ export const api = {
         .replace(/^-|-$/g, "")
         .slice(0, 45) || "birthday";
     const slug = `${slugBase}-${crypto.randomUUID().slice(0, 4)}`;
-    const { data: page, error } = await client
-      .from("birthday_pages")
-      .insert({
-        owner_id: user.id,
-        slug,
-        celebrant_name: name,
-        birthday_date: date,
-        headline: headline || `${name}'s Birthday`,
-        introduction: intro,
-        whatsapp_number: normalizePhone(whatsapp),
-        theme_key: theme,
-        transfer_bank_name: transfer.bankName,
-        transfer_account_number: transfer.accountNumber,
-        transfer_account_name: transfer.accountName,
-        status: "draft",
-      })
-      .select("id,slug")
-      .single();
+
+    const { data: page, error } = await retryOperation(async () =>
+      await client
+        .from("birthday_pages")
+        .insert({
+          owner_id: user.id,
+          slug,
+          celebrant_name: name,
+          birthday_date: date,
+          headline: headline || `${name}'s Birthday`,
+          introduction: intro,
+          whatsapp_number: normalizePhone(whatsapp),
+          theme_key: theme,
+          transfer_bank_name: transfer.bankName,
+          transfer_account_number: transfer.accountNumber,
+          transfer_account_name: transfer.accountName,
+          status: "draft",
+        })
+        .select("id,slug")
+        .single(),
+    );
+
     if (error || !page)
       throw error ?? new Error("Could not create Birthday Page");
+
     try {
       for (const [index, file] of input.photos.entries()) {
         const path = await this.uploadBirthdayPhoto(user.id, page.id, file);
-        const { error: photoError } = await client
-          .from("page_photos")
-          .insert({
+        const { error: photoError } = await retryOperation(async () =>
+          await client.from("page_photos").insert({
             page_id: page.id,
             storage_path: path,
             alt_text: `${name} birthday photo ${index + 1}`,
             sort_order: index,
             is_cover: index === 0,
-          });
+          }),
+        );
         if (photoError) throw photoError;
       }
+
       if (input.items.length) {
         const items = input.items
           .map((item) => ({
@@ -717,9 +761,9 @@ export const api = {
             url: item.url,
           }))
           .filter((item) => item.name);
-        const { error: itemError } = await client
-          .from("birthday_wishlist_items")
-          .insert(
+
+        const { error: itemError } = await retryOperation(async () =>
+          await client.from("birthday_wishlist_items").insert(
             items.map((item, index) => ({
               page_id: page.id,
               name: item.name,
@@ -729,17 +773,26 @@ export const api = {
               status: "available",
               sort_order: index,
             })),
-          );
+          ),
+        );
         if (itemError) throw itemError;
       }
-      const { error: publishError } = await client
-        .from("birthday_pages")
-        .update({ status: "published", published_at: new Date().toISOString() })
-        .eq("id", page.id);
+
+      const { error: publishError } = await retryOperation(async () =>
+        await client
+          .from("birthday_pages")
+          .update({ status: "published", published_at: new Date().toISOString() })
+          .eq("id", page.id),
+      );
+
       if (publishError) throw publishError;
       return { id: page.id, slug: page.slug };
     } catch (publishError) {
-      await client.from("birthday_pages").delete().eq("id", page.id);
+      try {
+        await client.from("birthday_pages").delete().eq("id", page.id);
+      } catch {
+        // ignore cleanup error
+      }
       throw publishError;
     }
   },

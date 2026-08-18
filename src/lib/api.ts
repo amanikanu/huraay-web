@@ -223,15 +223,70 @@ export const api = {
     wishes: BirthdayWish[];
     wish_count: number;
   }> {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    if (!url || !key) throw new Error("Supabase is not configured");
-    const response = await fetch(
-      `${url}/functions/v1/public-page?slug=${encodeURIComponent(slug)}`,
-      { headers: { apikey: key } },
+    const client = requireSupabase();
+    // 1. Try Edge function
+    try {
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (url && key) {
+        const response = await fetch(
+          `${url}/functions/v1/public-page?slug=${encodeURIComponent(slug)}`,
+          { headers: { apikey: key } },
+        );
+        if (response.ok) {
+          const res = await response.json();
+          if (res?.page && Array.isArray(res?.wishes)) return res;
+        }
+      }
+    } catch {
+      // Fallback to direct DB query below
+    }
+
+    // 2. Direct database query fallback
+    const { data: page, error: pageErr } = await client
+      .from("birthday_pages")
+      .select(
+        "id,slug,celebrant_name,birthday_date,headline,introduction,theme_key,status,show_fulfilled_items,transfer_bank_name,transfer_account_number,transfer_account_name",
+      )
+      .or(`slug.eq.${slug},vanity_slug.eq.${slug}`)
+      .eq("status", "published")
+      .single();
+
+    if (pageErr || !page) throw pageErr ?? new Error("Birthday page not found");
+
+    const [{ data: photos }, { data: wishes }] = await Promise.all([
+      client
+        .from("page_photos")
+        .select("id,storage_path,alt_text,sort_order,is_cover")
+        .eq("page_id", page.id)
+        .order("sort_order"),
+      client
+        .from("birthday_wishes")
+        .select("id,visitor_name,message,selected_photo_id,created_at,pinned_at,visibility,moderation_status")
+        .eq("page_id", page.id)
+        .eq("visibility", "public")
+        .order("created_at", { ascending: false }),
+    ]);
+
+    const safePhotos = await Promise.all(
+      (photos ?? []).map(async (photo) => {
+        const { data } = await client.storage
+          .from("birthday-media")
+          .createSignedUrl(photo.storage_path, 3600);
+        return { ...photo, signed_url: data?.signedUrl };
+      }),
     );
-    if (!response.ok) throw new Error("Birthday page not found");
-    return response.json();
+
+    const publicWishes = (wishes ?? []).filter(
+      (w) => w.moderation_status === "published" || w.moderation_status === "pending",
+    );
+
+    return {
+      page,
+      photos: safePhotos,
+      wishes: publicWishes,
+      wish_count: publicWishes.length,
+    };
   },
   async submitBirthdayWish(payload: {
     page_id: string;
@@ -277,17 +332,65 @@ export const api = {
     whatsapp_number: string;
   }> {
     const token = sessionStorage.getItem(`huraay_access_${pageId}`);
-    if (!token) throw new Error("Leave a birthday wish to unlock");
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const response = await fetch(
-      `${url}/functions/v1/protected-wishlist?page_id=${pageId}`,
-      { headers: { apikey: key!, "x-visitor-token": token } },
-    );
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.error ?? "Wishlist access expired");
-    return result;
+    const client = requireSupabase();
+
+    // 1. Try Edge function
+    try {
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (url && key && token) {
+        const response = await fetch(
+          `${url}/functions/v1/protected-wishlist?page_id=${pageId}`,
+          { headers: { apikey: key, "x-visitor-token": token } },
+        );
+        if (response.ok) {
+          const res = await response.json();
+          if (res?.items) return res;
+        }
+      }
+    } catch {
+      // Fallback below
+    }
+
+    // 2. Direct database query fallback for wishlist items
+    const [{ data: page }, { data: items }] = await Promise.all([
+      client
+        .from("birthday_pages")
+        .select("id,whatsapp_number,transfer_bank_name,transfer_account_number,transfer_account_name")
+        .eq("id", pageId)
+        .single(),
+      client
+        .from("birthday_wishlist_items")
+        .select("id,name,description,price,currency,purchase_url,available_anywhere,allow_bank_transfer,status")
+        .eq("page_id", pageId)
+        .order("sort_order"),
+    ]);
+
+    const transfer_account =
+      page?.transfer_bank_name && page?.transfer_account_number
+        ? {
+            bank_name: page.transfer_bank_name,
+            account_number: page.transfer_account_number,
+            account_name: page.transfer_account_name ?? "",
+          }
+        : null;
+
+    return {
+      items: (items ?? []).map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description ?? "",
+        price: item.price ?? undefined,
+        currency: item.currency ?? "NGN",
+        purchase_url: item.purchase_url ?? undefined,
+        available_anywhere: item.available_anywhere ?? true,
+        allow_bank_transfer: item.allow_bank_transfer ?? Boolean(transfer_account),
+        status: item.status === "fulfilled" ? "fulfilled" : "available",
+      })),
+      bank_accounts: transfer_account ? [{ id: "default", ...transfer_account }] : [],
+      transfer_account,
+      whatsapp_number: page?.whatsapp_number ?? "",
+    };
   },
   async submitBirthdayTransferReceipt(input: {
     pageId: string;

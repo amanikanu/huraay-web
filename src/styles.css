@@ -5584,7 +5584,7 @@ body,
   padding: 14px;
 }
 
-/* ── World-Class Hero Banner & Glass Card ──────────────── */
+/* ── World-Class True Glassmorphism Hero ──────────────── */
 .hero-worldclass {
   position: relative;
   min-height: 520px;
@@ -5594,19 +5594,21 @@ body,
   overflow: hidden;
   border-radius: 28px;
   margin-bottom: 40px;
+  background: linear-gradient(135deg, #1e0b36 0%, #2d1254 50%, #4a154b 100%);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
 }
 .birthday-hero-glass-card {
   position: relative;
   z-index: 2;
   width: min(640px, 100%);
   margin: 0 auto;
-  padding: 40px 36px;
+  padding: 42px 36px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: 0 20px 50px rgba(18, 12, 35, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.5);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -5615,20 +5617,20 @@ body,
 }
 .hero-celebrant-avatar {
   position: relative;
-  width: 88px;
-  height: 88px;
+  width: 92px;
+  height: 92px;
   border-radius: 50%;
   padding: 3px;
-  background: linear-gradient(135deg, #ee3a84 0%, #6223cf 100%);
-  box-shadow: 0 8px 24px rgba(98, 35, 207, 0.35);
-  margin-top: -65px;
+  background: linear-gradient(135deg, #ee3a84 0%, #a855f7 100%);
+  box-shadow: 0 10px 30px rgba(238, 58, 132, 0.4);
+  margin-top: -68px;
 }
 .hero-celebrant-avatar img {
   width: 100%;
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #fff;
+  border: 3px solid #fff;
 }
 .hero-celebrant-avatar span {
   width: 100%;
@@ -5640,32 +5642,19 @@ body,
   place-items: center;
   font-size: 36px;
   font-weight: 800;
-  border: 2px solid #fff;
-}
-.live-sparkle-dot {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: #fff;
-  display: grid;
-  place-items: center;
-  font-size: 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  border: 3px solid #fff;
 }
 .hero-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
+  padding: 6px 16px;
   border-radius: 999px;
-  background: #fdf2f8;
-  color: #ee3a84;
+  background: rgba(238, 58, 132, 0.16);
+  color: #ff94c8;
   font-size: 13px;
   font-weight: 700;
-  border: 1px solid #fbcfe8;
+  border: 1px solid rgba(238, 58, 132, 0.35);
 }
 .hero-badge svg {
   width: 15px;
@@ -5674,14 +5663,15 @@ body,
 .birthday-hero-glass-card h1 {
   font-size: clamp(28px, 5vw, 44px);
   margin: 0;
-  color: #17131d;
+  color: #ffffff;
   font-weight: 800;
   letter-spacing: -1.2px;
   line-height: 1.15;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 .hero-date-text {
   margin: 0;
-  color: #554a61;
+  color: rgba(255, 255, 255, 0.88);
   font-size: 15px;
   font-weight: 600;
 }
@@ -5694,23 +5684,79 @@ body,
   margin-top: 8px;
 }
 .hero-btn-primary {
-  background: linear-gradient(135deg, #6223cf 0%, #ee3a84 100%) !important;
+  background: linear-gradient(135deg, #ee3a84 0%, #8b5cf6 100%) !important;
   color: #fff !important;
   font-size: 15px !important;
   padding: 14px 28px !important;
-  box-shadow: 0 8px 24px rgba(238, 58, 132, 0.35) !important;
+  box-shadow: 0 8px 24px rgba(238, 58, 132, 0.4) !important;
   border: none !important;
 }
 .hero-btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(238, 58, 132, 0.45) !important;
+  box-shadow: 0 12px 30px rgba(238, 58, 132, 0.5) !important;
 }
 .hero-btn-secondary {
   font-size: 14px !important;
   padding: 14px 22px !important;
-  background: #fff !important;
-  border: 1px solid #e0d5f0 !important;
-  color: #6223cf !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  color: #fff !important;
+  backdrop-filter: blur(10px);
+}
+
+/* ── Bento Photo Grid Layout ─────────────────────────── */
+.bento-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  width: 100%;
+  margin: 24px 0 40px;
+}
+.bento-photo-item {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 0;
+  background: #f1ecf7;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.bento-photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+.bento-photo-item:hover img {
+  transform: scale(1.06);
+}
+.bento-photo-item figcaption {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Flying Emoji Particle Bursts ─────────────────────── */
+.emoji-burst-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  z-index: 99;
+}
+.flying-emoji {
+  position: absolute;
+  font-size: 26px;
+  user-select: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
 }
 
 /* ── Sticky Celebration Bar ─────────────────────────────── */
@@ -5727,11 +5773,11 @@ body,
   width: min(540px, calc(100% - 32px));
   padding: 10px 14px 10px 20px;
   border-radius: 999px;
-  background: rgba(23, 19, 29, 0.88);
+  background: rgba(23, 19, 29, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
   color: #fff;
   animation: sticky-slide-up 0.35s ease-out forwards;
 }
@@ -5745,7 +5791,8 @@ body,
   gap: 8px;
   min-width: 0;
 }
-.sticky-crown {
+.sticky-heart {
+  color: #ee3a84;
   font-size: 18px;
 }
 .sticky-celebrant-info strong {
@@ -5781,7 +5828,7 @@ body,
 
 @media (max-width: 600px) {
   .birthday-hero-glass-card { padding: 30px 20px; }
-  .hero-celebrant-avatar { width: 72px; height: 72px; margin-top: -50px; }
+  .hero-celebrant-avatar { width: 76px; height: 76px; margin-top: -52px; }
   .sticky-celebration-bar { bottom: 12px; width: calc(100% - 24px); }
   .sticky-celebrant-info strong { max-width: 140px; }
 }

@@ -33,6 +33,19 @@ import {
   Dialog,
 } from "../components/ui";
 import { CelebrationBurst } from "../components/Celebration";
+
+function calculateDaysToBirthday(birthdayDateStr: string): number {
+  const parts = birthdayDateStr.split("-").map(Number);
+  if (parts.length !== 3) return 0;
+  const [year, month, day] = parts;
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let target = new Date(year, month - 1, day);
+  if (target < todayStart) {
+    target = new Date(now.getFullYear() + 1, month - 1, day);
+  }
+  return Math.round((target.getTime() - todayStart.getTime()) / 86400000);
+}
 import { whatsappLink } from "../lib/media";
 
 type PublicData = {
@@ -130,7 +143,7 @@ export function PublicBoardPage() {
   const transferAccount = wishlist?.transfer_account ?? null;
   const cover = photos.find((p) => p.is_cover) ?? photos[0];
   const date = new Date(`${page.birthday_date}T00:00:00`);
-  const days = Math.ceil((date.getTime() - Date.now()) / 86400000);
+  const days = calculateDaysToBirthday(page.birthday_date);
   const countdown =
     days > 1
       ? `${days} days to ${page.celebrant_name}'s birthday`
@@ -175,7 +188,6 @@ export function PublicBoardPage() {
               ) : (
                 <span>{page.celebrant_name[0]}</span>
               )}
-              <span className="live-sparkle-dot">✨</span>
             </div>
 
             <div className="hero-badge">
@@ -186,7 +198,7 @@ export function PublicBoardPage() {
             <h1>{page.headline}</h1>
 
             <p className="hero-date-text">
-              📅 {new Intl.DateTimeFormat("en-NG", {
+              {new Intl.DateTimeFormat("en-NG", {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
@@ -218,10 +230,14 @@ export function PublicBoardPage() {
           <p>{page.introduction}</p>
         </section>
         {photos.length > 1 && (
-          <section className="photo-story">
-            <div className="photo-track">
+          <section className="photo-story birthday-container">
+            <div className="bento-photo-grid">
               {photos.map((photo, index) => (
-                <motion.figure key={photo.id} whileHover={{ y: -4 }}>
+                <motion.figure
+                  key={photo.id}
+                  className="bento-photo-item"
+                  whileHover={{ scale: 1.02 }}
+                >
                   <img
                     src={photoUrl(photo.storage_path)}
                     alt={
@@ -880,6 +896,23 @@ function SocialWishCard({
   const [likes, setLikes] = useState(() => Math.floor(Math.random() * 5) + 1);
   const [liked, setLiked] = useState(false);
   const [reaction, setReaction] = useState<string | null>(null);
+  const [bursts, setBursts] = useState<
+    { id: string; emoji: string; left: number }[]
+  >([]);
+
+  const triggerBurst = (emoji: string) => {
+    const newBursts = Array.from({ length: 6 }).map((_, i) => ({
+      id: `${Date.now()}-${i}-${Math.random()}`,
+      emoji,
+      left: (i - 2.5) * 18,
+    }));
+    setBursts((prev) => [...prev, ...newBursts]);
+    setTimeout(() => {
+      setBursts((prev) =>
+        prev.filter((b) => !newBursts.some((n) => n.id === b.id)),
+      );
+    }, 1100);
+  };
 
   const photo = photos.find((p) => p.id === wish.selected_photo_id);
   const avatarColors = [
@@ -909,6 +942,7 @@ function SocialWishCard({
     } else {
       setLikes((l) => l + 1);
       setLiked(true);
+      triggerBurst("❤️");
     }
   };
 
@@ -920,6 +954,19 @@ function SocialWishCard({
       viewport={{ once: true }}
       transition={{ duration: 0.28, delay: (index % 4) * 0.05 }}
     >
+      <div className="emoji-burst-container">
+        {bursts.map((b) => (
+          <motion.span
+            key={b.id}
+            className="flying-emoji"
+            initial={{ opacity: 1, y: 0, scale: 0.8, x: b.left }}
+            animate={{ opacity: 0, y: -90, scale: 1.5, x: b.left * 1.4 }}
+            transition={{ duration: 0.9, ease: "easeOut" }}
+          >
+            {b.emoji}
+          </motion.span>
+        ))}
+      </div>
       <header className="social-wish-header">
         <div className="social-avatar" style={{ background: avatarBg }}>
           {wish.visitor_name[0]?.toUpperCase() || "H"}
@@ -931,7 +978,7 @@ function SocialWishCard({
           </small>
         </div>
         <span className="social-badge">
-          {wish.visibility === "private" ? "🔒 Private" : "✨ Wish"}
+          {wish.visibility === "private" ? "Private" : "Wish"}
         </span>
       </header>
 
@@ -966,7 +1013,10 @@ function SocialWishCard({
                 key={emoji}
                 type="button"
                 className={`emoji-btn ${reaction === emoji ? "active" : ""}`}
-                onClick={() => setReaction(reaction === emoji ? null : emoji)}
+                onClick={() => {
+                  setReaction(reaction === emoji ? null : emoji);
+                  triggerBurst(emoji);
+                }}
               >
                 {emoji}
               </button>

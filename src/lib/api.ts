@@ -43,6 +43,13 @@ function parseTransferDetails(input: {
   return { bankName, accountNumber, accountName };
 }
 
+function parsePrice(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const cleaned = String(value).replace(/[^0-9.]/g, "");
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+}
+
 async function retryOperation<T>(
   fn: () => Promise<T>,
   retries = 3,
@@ -73,9 +80,10 @@ async function requireUser(
 
   if (!session?.user) throw new Error(message);
 
-  // If session is near expiry (within 5 minutes) or expired, refresh it first
+  // Refresh proactive if within 10 mins of expiry or already expired to avoid 403 network noise
   const isNearExpiry =
-    session.expires_at && session.expires_at * 1000 - Date.now() < 5 * 60 * 1000;
+    !session.expires_at || session.expires_at * 1000 - Date.now() < 10 * 60 * 1000;
+
   if (isNearExpiry) {
     if (!pendingRefresh) {
       pendingRefresh = client.auth
@@ -84,15 +92,15 @@ async function requireUser(
           pendingRefresh = null;
         });
     }
-    await pendingRefresh.catch(() => undefined);
-    const { data: fresh } = await client.auth.getSession();
-    if (fresh.session) session = fresh.session;
+    const refreshed = await pendingRefresh.catch(() => null);
+    if (refreshed?.data?.session) {
+      session = refreshed.data.session;
+    }
   }
 
-  // Validate the current JWT token with Supabase server
+  // Validate current token with server
   const { data: userData, error: userError } = await client.auth.getUser();
   if (userError || !userData?.user) {
-    // If backend rejected token, attempt refresh Session
     const { data: refreshed, error: refreshErr } = await client.auth.refreshSession();
     if (refreshErr || !refreshed.session?.user) {
       throw new Error("Your session has expired. Please sign in again.");
@@ -588,24 +596,40 @@ export const api = {
       const items = input.items
         .map((item) => ({
           name: text(item.name).trim(),
-          price: item.price,
-          url: item.url,
+          price: parsePrice(item.price),
+          url: text(item.url).trim() || null,
         }))
         .filter((item) => item.name);
-      const { error: insertError } = await client
-        .from("birthday_wishlist_items")
-        .insert(
-          items.map((item, index) => ({
-            page_id: pageId,
-            name: item.name,
-            price: item.price ? Number(item.price) : null,
-            purchase_url: item.url || null,
-            available_anywhere: !item.url,
-            status: "available",
-            sort_order: index,
-          })),
-        );
-      if (insertError) throw insertError;
+
+      if (items.length) {
+        try {
+          const { error: insertErr } = await client
+            .from("birthday_wishlist_items")
+            .insert(
+              items.map((item, index) => ({
+                page_id: pageId,
+                name: item.name,
+                price: item.price,
+                purchase_url: item.url,
+                status: "available",
+                sort_order: index,
+              })),
+            );
+          if (insertErr) {
+            await client.from("birthday_wishlist_items").insert(
+              items.map((item, index) => ({
+                page_id: pageId,
+                name: item.name,
+                price: item.price,
+                status: "available",
+                sort_order: index,
+              })),
+            );
+          }
+        } catch (wishlistErr) {
+          console.warn("Could not update wishlist items:", wishlistErr);
+        }
+      }
     }
   },
   async submitManualPayment(input: {
@@ -757,25 +781,42 @@ export const api = {
         const items = input.items
           .map((item) => ({
             name: text(item.name).trim(),
-            price: item.price,
-            url: item.url,
+            price: parsePrice(item.price),
+            url: text(item.url).trim() || null,
           }))
           .filter((item) => item.name);
 
-        const { error: itemError } = await retryOperation(async () =>
-          await client.from("birthday_wishlist_items").insert(
-            items.map((item, index) => ({
-              page_id: page.id,
-              name: item.name,
-              price: item.price ? Number(item.price) : null,
-              purchase_url: item.url || null,
-              available_anywhere: !item.url,
-              status: "available",
-              sort_order: index,
-            })),
-          ),
-        );
-        if (itemError) throw itemError;
+        if (items.length) {
+          try {
+            const { error: itemError } = await retryOperation(async () =>
+              await client.from("birthday_wishlist_items").insert(
+                items.map((item, index) => ({
+                  page_id: page.id,
+                  name: item.name,
+                  price: item.price,
+                  purchase_url: item.url,
+                  status: "available",
+                  sort_order: index,
+                })),
+              ),
+            );
+            if (itemError) {
+              await retryOperation(async () =>
+                await client.from("birthday_wishlist_items").insert(
+                  items.map((item, index) => ({
+                    page_id: page.id,
+                    name: item.name,
+                    price: item.price,
+                    status: "available",
+                    sort_order: index,
+                  })),
+                ),
+              );
+            }
+          } catch (wishlistErr) {
+            console.warn("Could not insert wishlist items:", wishlistErr);
+          }
+        }
       }
 
       const { error: publishError } = await retryOperation(async () =>

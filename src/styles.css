@@ -5584,3 +5584,205 @@ body,
   padding: 14px;
 }
 
+/* ── World-Class Hero Banner & Glass Card ──────────────── */
+.hero-worldclass {
+  position: relative;
+  min-height: 520px;
+  display: grid;
+  place-items: center;
+  padding: 60px 20px;
+  overflow: hidden;
+  border-radius: 28px;
+  margin-bottom: 40px;
+}
+.birthday-hero-glass-card {
+  position: relative;
+  z-index: 2;
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding: 40px 36px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 20px 50px rgba(18, 12, 35, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+.hero-celebrant-avatar {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, #ee3a84 0%, #6223cf 100%);
+  box-shadow: 0 8px 24px rgba(98, 35, 207, 0.35);
+  margin-top: -65px;
+}
+.hero-celebrant-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+}
+.hero-celebrant-avatar span {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #6223cf;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 36px;
+  font-weight: 800;
+  border: 2px solid #fff;
+}
+.live-sparkle-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #fdf2f8;
+  color: #ee3a84;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid #fbcfe8;
+}
+.hero-badge svg {
+  width: 15px;
+  height: 15px;
+}
+.birthday-hero-glass-card h1 {
+  font-size: clamp(28px, 5vw, 44px);
+  margin: 0;
+  color: #17131d;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  line-height: 1.15;
+}
+.hero-date-text {
+  margin: 0;
+  color: #554a61;
+  font-size: 15px;
+  font-weight: 600;
+}
+.hero-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 8px;
+}
+.hero-btn-primary {
+  background: linear-gradient(135deg, #6223cf 0%, #ee3a84 100%) !important;
+  color: #fff !important;
+  font-size: 15px !important;
+  padding: 14px 28px !important;
+  box-shadow: 0 8px 24px rgba(238, 58, 132, 0.35) !important;
+  border: none !important;
+}
+.hero-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(238, 58, 132, 0.45) !important;
+}
+.hero-btn-secondary {
+  font-size: 14px !important;
+  padding: 14px 22px !important;
+  background: #fff !important;
+  border: 1px solid #e0d5f0 !important;
+  color: #6223cf !important;
+}
+
+/* ── Sticky Celebration Bar ─────────────────────────────── */
+.sticky-celebration-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: min(540px, calc(100% - 32px));
+  padding: 10px 14px 10px 20px;
+  border-radius: 999px;
+  background: rgba(23, 19, 29, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  color: #fff;
+  animation: sticky-slide-up 0.35s ease-out forwards;
+}
+@keyframes sticky-slide-up {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.sticky-celebrant-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.sticky-crown {
+  font-size: 18px;
+}
+.sticky-celebrant-info strong {
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sticky-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.sticky-wish-btn {
+  background: linear-gradient(135deg, #ee3a84 0%, #6223cf 100%) !important;
+  color: #fff !important;
+  padding: 8px 18px !important;
+  min-height: 38px !important;
+  font-size: 13px !important;
+  border-radius: 999px !important;
+  border: none !important;
+}
+.sticky-share-btn {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+  padding: 8px 12px !important;
+  min-height: 38px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+@media (max-width: 600px) {
+  .birthday-hero-glass-card { padding: 30px 20px; }
+  .hero-celebrant-avatar { width: 72px; height: 72px; margin-top: -50px; }
+  .sticky-celebration-bar { bottom: 12px; width: calc(100% - 24px); }
+  .sticky-celebrant-info strong { max-width: 140px; }
+}
+

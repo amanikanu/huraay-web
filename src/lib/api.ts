@@ -50,6 +50,16 @@ function parsePrice(value: unknown): number | null {
   return isNaN(num) ? null : num;
 }
 
+function normalizeUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  let trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!/^https?:\/\//i.test(trimmed)) {
+    trimmed = `https://${trimmed}`;
+  }
+  return /^https:\/\//i.test(trimmed) ? trimmed : null;
+}
+
 async function retryOperation<T>(
   fn: () => Promise<T>,
   retries = 3,
@@ -597,7 +607,7 @@ export const api = {
         .map((item) => ({
           name: text(item.name).trim(),
           price: parsePrice(item.price),
-          url: text(item.url).trim() || null,
+          url: normalizeUrl(item.url),
         }))
         .filter((item) => item.name);
 
@@ -610,6 +620,7 @@ export const api = {
                 page_id: pageId,
                 name: item.name,
                 price: item.price,
+                currency: "NGN",
                 purchase_url: item.url,
                 status: "available",
                 sort_order: index,
@@ -621,6 +632,7 @@ export const api = {
                 page_id: pageId,
                 name: item.name,
                 price: item.price,
+                currency: "NGN",
                 status: "available",
                 sort_order: index,
               })),
@@ -782,7 +794,7 @@ export const api = {
           .map((item) => ({
             name: text(item.name).trim(),
             price: parsePrice(item.price),
-            url: text(item.url).trim() || null,
+            url: normalizeUrl(item.url),
           }))
           .filter((item) => item.name);
 
@@ -794,6 +806,7 @@ export const api = {
                   page_id: page.id,
                   name: item.name,
                   price: item.price,
+                  currency: "NGN",
                   purchase_url: item.url,
                   status: "available",
                   sort_order: index,
@@ -807,6 +820,7 @@ export const api = {
                     page_id: page.id,
                     name: item.name,
                     price: item.price,
+                    currency: "NGN",
                     status: "available",
                     sort_order: index,
                   })),

@@ -82,7 +82,7 @@ serve(async (request) => {
       visitor_name: name,
       message,
       visibility,
-      moderation_status: visibility === "private" ? "published" : "pending",
+      moderation_status: "published",
     })
     .select("id,moderation_status")
     .single();

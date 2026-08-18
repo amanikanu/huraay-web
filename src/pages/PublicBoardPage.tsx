@@ -159,7 +159,7 @@ export function PublicBoardPage() {
         </Button>
       </header>
       <main>
-        <section className="birthday-hero">
+        <section className="birthday-hero hero-worldclass">
           {cover && (
             <img
               src={photoUrl(cover.storage_path)}
@@ -168,18 +168,49 @@ export function PublicBoardPage() {
             />
           )}
           <div className="birthday-hero-shade" />
-          <div className="birthday-hero-content">
-            <span>{countdown}</span>
+          <div className="birthday-hero-glass-card">
+            <div className="hero-celebrant-avatar">
+              {cover ? (
+                <img src={photoUrl(cover.storage_path)} alt={page.celebrant_name} />
+              ) : (
+                <span>{page.celebrant_name[0]}</span>
+              )}
+              <span className="live-sparkle-dot">✨</span>
+            </div>
+
+            <div className="hero-badge">
+              <Sparkle weight="fill" />
+              <span>{countdown}</span>
+            </div>
+
             <h1>{page.headline}</h1>
-            <p>
-              {new Intl.DateTimeFormat("en-NG", {
+
+            <p className="hero-date-text">
+              📅 {new Intl.DateTimeFormat("en-NG", {
+                weekday: "long",
                 day: "numeric",
                 month: "long",
               }).format(date)}
             </p>
-            <Button onClick={openWish}>
-              Leave a Birthday Wish <Heart weight="fill" />
-            </Button>
+
+            <div className="hero-action-row">
+              <Button className="hero-btn-primary" onClick={openWish}>
+                Leave a Birthday Wish <Heart weight="fill" />
+              </Button>
+              <Button
+                className="hero-btn-secondary"
+                variant="secondary"
+                onClick={() => {
+                  if (unlocked) {
+                    document.getElementById("wishlist-zone")?.scrollIntoView({ behavior: "smooth" });
+                  } else {
+                    openWish();
+                  }
+                }}
+              >
+                <Gift /> {unlocked ? "View Wishlist Gifts" : "Unlock Wishlist & Gifts"}
+              </Button>
+            </div>
           </div>
         </section>
         <section className="birthday-intro birthday-container">
@@ -366,11 +397,22 @@ export function PublicBoardPage() {
           photoUrl={photoUrl}
           startedAt={wishStartedAt}
           close={() => setWishOpen(false)}
-          submitted={async () => {
+          submitted={async (newWish?: BirthdayWish) => {
+            if (newWish && newWish.visibility === "public") {
+              setData((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      wishes: [newWish, ...prev.wishes.filter((w) => w.id !== newWish.id)],
+                      wish_count: prev.wish_count + 1,
+                    }
+                  : prev,
+              );
+            }
             setCelebrate(true);
             setWishOpen(false);
             await unlock(page.id);
-            // Instantly re-fetch page data so the newly posted wish appears on the wall immediately!
+            // Re-fetch page data in background to stay fully synced with server
             api
               .publicBirthdayPage(slug)
               .then((res) => setData(res))
@@ -407,6 +449,20 @@ export function PublicBoardPage() {
           setToast("Receipt received");
         }}
       />
+      <aside className="sticky-celebration-bar">
+        <div className="sticky-celebrant-info">
+          <span className="sticky-crown">👑</span>
+          <strong>{page.celebrant_name}'s Birthday</strong>
+        </div>
+        <div className="sticky-bar-actions">
+          <Button className="sticky-wish-btn" onClick={openWish}>
+            <Heart weight="fill" /> Write Wish
+          </Button>
+          <Button className="sticky-share-btn" variant="secondary" onClick={share} aria-label="Share page">
+            <ShareNetwork />
+          </Button>
+        </div>
+      </aside>
       <CelebrationBurst active={celebrate} />
       {toast && <Toast message={toast} onClose={() => setToast("")} />}
     </Page>
@@ -426,7 +482,7 @@ function WishSheet({
   photoUrl: (p: string) => string;
   startedAt: number;
   close: () => void;
-  submitted: () => void;
+  submitted: (wish?: BirthdayWish) => void;
 }) {
   const saved = useMemo(() => {
     try {
@@ -450,7 +506,7 @@ function WishSheet({
     setBusy(true);
     setError("");
     try {
-      await api.submitBirthdayWish({
+      const res = await api.submitBirthdayWish({
         page_id: page.id,
         selected_photo_id: photo,
         visitor_name: name,
@@ -460,7 +516,15 @@ function WishSheet({
         website: "",
       });
       localStorage.removeItem(`huraay_wish_draft_${page.id}`);
-      await submitted();
+      const newWish: BirthdayWish = {
+        id: res.wish_id || crypto.randomUUID(),
+        visitor_name: name,
+        message,
+        selected_photo_id: photo,
+        created_at: new Date().toISOString(),
+        visibility,
+      };
+      await submitted(newWish);
     } catch (err) {
       localStorage.setItem(
         `huraay_wish_draft_${page.id}`,

@@ -31,18 +31,20 @@ export function Button({
   type = "button",
   disabled,
   onClick,
+  className = "",
 }: {
   children: ReactNode;
   variant?: "primary" | "secondary" | "ghost" | "danger";
   type?: "button" | "submit";
   disabled?: boolean;
   onClick?: () => void;
+  className?: string;
 }) {
   const reduce = useReducedMotion();
   return (
     <motion.button
       whileTap={reduce ? undefined : { scale: 0.98 }}
-      className={`button ${variant}`}
+      className={`button ${variant} ${className}`}
       type={type}
       disabled={disabled}
       onClick={onClick}

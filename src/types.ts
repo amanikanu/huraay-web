@@ -72,7 +72,7 @@ export interface BirthdayWish {
   selected_photo_id: string;
   created_at: string;
   pinned_at?: string | null;
-  visibility?: "public" | "private";
+  visibility?: "public" | "private" | "anonymous";
 }
 export interface ProtectedWishlistItem {
   id: string;
@@ -83,6 +83,7 @@ export interface ProtectedWishlistItem {
   currency: string;
   purchase_url?: string;
   available_anywhere: boolean;
+  availability_note?: string;
   allow_bank_transfer: boolean;
   status: "available" | "fulfilled";
   bank_account_id?: string;

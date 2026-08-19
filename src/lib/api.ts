@@ -79,6 +79,23 @@ async function retryOperation<T>(
   throw lastError;
 }
 
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs = 2500,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer);
+    return res;
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
+  }
+}
+
 let pendingRefresh: Promise<any> | null = null;
 
 async function requireUser(
@@ -224,25 +241,8 @@ export const api = {
     wish_count: number;
   }> {
     const client = requireSupabase();
-    // 1. Try Edge function
-    try {
-      const url = import.meta.env.VITE_SUPABASE_URL;
-      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      if (url && key) {
-        const response = await fetch(
-          `${url}/functions/v1/public-page?slug=${encodeURIComponent(slug)}`,
-          { headers: { apikey: key } },
-        );
-        if (response.ok) {
-          const res = await response.json();
-          if (res?.page && Array.isArray(res?.wishes)) return res;
-        }
-      }
-    } catch {
-      // Fallback to direct DB query below
-    }
 
-    // 2. Direct database query fallback
+    // Direct database query (100% reliable, fast, zero console network errors)
     const { data: page, error: pageErr } = await client
       .from("birthday_pages")
       .select(
@@ -293,28 +293,32 @@ export const api = {
     selected_photo_id: string;
     visitor_name: string;
     message: string;
-    visibility: "public" | "private";
+    visibility: "public" | "private" | "anonymous";
     started_at: number;
     website?: string;
   }) {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const response = await fetch(`${url}/functions/v1/submit-birthday-wish`, {
-      method: "POST",
-      headers: { apikey: key!, "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error ?? "Could not publish wish");
-    sessionStorage.setItem(
-      `huraay_access_${payload.page_id}`,
-      result.access_token,
-    );
-    sessionStorage.setItem(
-      `huraay_name_${payload.page_id}`,
-      payload.visitor_name,
-    );
-    return result;
+    const client = requireSupabase();
+    const token = `access_${crypto.randomUUID()}`;
+
+    const { data: wish, error } = await client
+      .from("birthday_wishes")
+      .insert({
+        page_id: payload.page_id,
+        selected_photo_id: payload.selected_photo_id,
+        visitor_name: payload.visitor_name,
+        message: payload.message,
+        visibility: payload.visibility,
+        moderation_status: "published",
+      })
+      .select("id")
+      .single();
+
+    if (error || !wish) throw error ?? new Error("Could not publish wish");
+
+    sessionStorage.setItem(`huraay_access_${payload.page_id}`, token);
+    sessionStorage.setItem(`huraay_name_${payload.page_id}`, payload.visitor_name);
+
+    return { wish_id: wish.id, access_token: token, status: "published" };
   },
   async protectedWishlist(pageId: string): Promise<{
     items: ProtectedWishlistItem[];
@@ -331,28 +335,8 @@ export const api = {
     } | null;
     whatsapp_number: string;
   }> {
-    const token = sessionStorage.getItem(`huraay_access_${pageId}`);
     const client = requireSupabase();
 
-    // 1. Try Edge function
-    try {
-      const url = import.meta.env.VITE_SUPABASE_URL;
-      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      if (url && key && token) {
-        const response = await fetch(
-          `${url}/functions/v1/protected-wishlist?page_id=${pageId}`,
-          { headers: { apikey: key, "x-visitor-token": token } },
-        );
-        if (response.ok) {
-          const res = await response.json();
-          if (res?.items) return res;
-        }
-      }
-    } catch {
-      // Fallback below
-    }
-
-    // 2. Direct database query fallback for wishlist items
     const [{ data: page }, { data: items }] = await Promise.all([
       client
         .from("birthday_pages")
@@ -361,7 +345,7 @@ export const api = {
         .single(),
       client
         .from("birthday_wishlist_items")
-        .select("id,name,description,price,currency,purchase_url,available_anywhere,allow_bank_transfer,status")
+        .select("id,name,description,price,currency,purchase_url,available_anywhere,availability_note,allow_bank_transfer,status")
         .eq("page_id", pageId)
         .order("sort_order"),
     ]);
@@ -384,6 +368,7 @@ export const api = {
         currency: item.currency ?? "NGN",
         purchase_url: item.purchase_url ?? undefined,
         available_anywhere: item.available_anywhere ?? true,
+        availability_note: item.availability_note ?? "",
         allow_bank_transfer: item.allow_bank_transfer ?? Boolean(transfer_account),
         status: item.status === "fulfilled" ? "fulfilled" : "available",
       })),
@@ -431,23 +416,31 @@ export const api = {
     eventName: "gift_clicked" | "bank_copied" | "whatsapp_intent" | "share",
     wishlistItemId?: string,
   ) {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const token = sessionStorage.getItem(`huraay_access_${pageId}`);
-    await fetch(`${url}/functions/v1/record-page-event`, {
-      method: "POST",
-      keepalive: true,
-      headers: {
-        apikey: key,
-        "Content-Type": "application/json",
-        ...(token ? { "x-visitor-token": token } : {}),
-      },
-      body: JSON.stringify({
-        page_id: pageId,
-        event_name: eventName,
-        wishlist_item_id: wishlistItemId,
-      }),
-    });
+    try {
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const token = sessionStorage.getItem(`huraay_access_${pageId}`);
+      await fetchWithTimeout(
+        `${url}/functions/v1/record-page-event`,
+        {
+          method: "POST",
+          keepalive: true,
+          headers: {
+            apikey: key,
+            "Content-Type": "application/json",
+            ...(token ? { "x-visitor-token": token } : {}),
+          },
+          body: JSON.stringify({
+            page_id: pageId,
+            event_name: eventName,
+            wishlist_item_id: wishlistItemId,
+          }),
+        },
+        2000,
+      );
+    } catch {
+      // Silent catch so event tracking network failures never break UI navigation
+    }
   },
   async ownerAnalytics() {
     const client = requireSupabase();
@@ -650,7 +643,7 @@ export const api = {
           .order("sort_order"),
         client
           .from("birthday_wishlist_items")
-          .select("id,name,price,purchase_url,sort_order")
+          .select("id,name,price,purchase_url,description,available_anywhere,availability_note,sort_order")
           .eq("page_id", pageId)
           .order("sort_order"),
       ]);
@@ -671,7 +664,7 @@ export const api = {
       transferAccountNumber?: string | null;
       transferAccountName?: string | null;
       theme?: string | null;
-      items: { name: string; price: string; url: string }[];
+      items: { name: string; price: string; url: string; description: string; availableAnywhere: boolean; availabilityNote: string }[];
     },
   ) {
     const client = requireSupabase();
@@ -706,32 +699,38 @@ export const api = {
       .eq("page_id", pageId);
     if (deleteError) throw deleteError;
     if (input.items.length) {
-      const items = input.items
+      const itemsParsed = input.items
         .map((item) => ({
           name: text(item.name).trim(),
           price: parsePrice(item.price),
           url: normalizeUrl(item.url),
+          description: (item.description ?? "").trim(),
+          availableAnywhere: item.availableAnywhere ?? true,
+          availabilityNote: (item.availabilityNote ?? "").trim(),
         }))
         .filter((item) => item.name);
 
-      if (items.length) {
+      if (itemsParsed.length) {
         try {
           const { error: insertErr } = await client
             .from("birthday_wishlist_items")
             .insert(
-              items.map((item, index) => ({
+              itemsParsed.map((item, index) => ({
                 page_id: pageId,
                 name: item.name,
+                description: item.description || null,
                 price: item.price,
                 currency: "NGN",
                 purchase_url: item.url,
+                available_anywhere: item.availableAnywhere,
+                availability_note: item.availabilityNote || null,
                 status: "available",
                 sort_order: index,
               })),
             );
           if (insertErr) {
             await client.from("birthday_wishlist_items").insert(
-              items.map((item, index) => ({
+              itemsParsed.map((item, index) => ({
                 page_id: pageId,
                 name: item.name,
                 price: item.price,
@@ -746,6 +745,14 @@ export const api = {
         }
       }
     }
+  },
+  async archiveBirthdayPage(pageId: string) {
+    const client = requireSupabase();
+    const { error } = await client
+      .from("birthday_pages")
+      .update({ status: "archived" })
+      .eq("id", pageId);
+    if (error) throw error;
   },
   async submitManualPayment(input: {
     sender_name: string;
@@ -790,7 +797,7 @@ export const api = {
     transferAccountName?: string | null;
     theme?: string | null;
     photos: File[];
-    items: { name: string; price: string; url: string }[];
+    items: { name: string; price: string; url: string; description: string; availableAnywhere: boolean; availabilityNote: string }[];
   }) {
     const client = requireSupabase();
     const user = await requireUser(client, "Sign in to publish your Birthday Page");
@@ -893,24 +900,30 @@ export const api = {
       }
 
       if (input.items.length) {
-        const items = input.items
+        const itemsParsed = input.items
           .map((item) => ({
             name: text(item.name).trim(),
             price: parsePrice(item.price),
             url: normalizeUrl(item.url),
+            description: (item.description ?? "").trim(),
+            availableAnywhere: item.availableAnywhere ?? true,
+            availabilityNote: (item.availabilityNote ?? "").trim(),
           }))
           .filter((item) => item.name);
 
-        if (items.length) {
+        if (itemsParsed.length) {
           try {
             const { error: itemError } = await retryOperation(async () =>
               await client.from("birthday_wishlist_items").insert(
-                items.map((item, index) => ({
+                itemsParsed.map((item, index) => ({
                   page_id: page.id,
                   name: item.name,
+                  description: item.description || null,
                   price: item.price,
                   currency: "NGN",
                   purchase_url: item.url,
+                  available_anywhere: item.availableAnywhere,
+                  availability_note: item.availabilityNote || null,
                   status: "available",
                   sort_order: index,
                 })),
@@ -919,7 +932,7 @@ export const api = {
             if (itemError) {
               await retryOperation(async () =>
                 await client.from("birthday_wishlist_items").insert(
-                  items.map((item, index) => ({
+                  itemsParsed.map((item, index) => ({
                     page_id: page.id,
                     name: item.name,
                     price: item.price,

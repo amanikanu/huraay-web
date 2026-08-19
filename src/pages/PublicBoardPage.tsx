@@ -151,7 +151,7 @@ export function PublicBoardPage() {
         ? `Tomorrow is ${page.celebrant_name}'s birthday`
         : days === 0
           ? `Today is ${page.celebrant_name}'s Birthday`
-          : `Celebrating ${page.celebrant_name}`;
+          : `Celebrated ${page.celebrant_name} on ${new Intl.DateTimeFormat("en-NG", { month: "short", day: "numeric" }).format(date)}`;
   const photoUrl = (path: string) =>
     photos.find((photo) => photo.storage_path === path)?.signed_url ?? "";
   async function share() {
@@ -511,8 +511,8 @@ function WishSheet({
   }, [page.id]);
   const [name, setName] = useState(saved.name || "");
   const [message, setMessage] = useState(saved.message || "");
-  const [visibility, setVisibility] = useState<"public" | "private">(
-    saved.visibility === "private" ? "private" : "public",
+  const [visibility, setVisibility] = useState<"public" | "private" | "anonymous">(
+    saved.visibility === "private" ? "private" : saved.visibility === "anonymous" ? "anonymous" : "public",
   );
   const [photo, setPhoto] = useState(saved.photo || photos[0]?.id || "");
   const [busy, setBusy] = useState(false);
@@ -556,34 +556,25 @@ function WishSheet({
     }
   }
   return (
-    <div className="modal-backdrop" onMouseDown={close}>
-      <motion.div
-        className="wish-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="wish-title"
-        onMouseDown={(e) => e.stopPropagation()}
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", stiffness: 220, damping: 25 }}
-      >
-        <button className="modal-close" onClick={close} aria-label="Close">
-          <X />
-        </button>
-        <span>For {page.celebrant_name}</span>
-        <h2 id="wish-title">Leave a Birthday Wish</h2>
-        <p>Choose a favourite photo and write something personal.</p>
-        <form onSubmit={send}>
-          <Field label="Your name">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={80}
-              required
-              autoComplete="name"
-            />
-          </Field>
+    <Dialog
+      open={true}
+      title="Leave a Birthday Wish"
+      description={`For ${page.celebrant_name}. Choose a favourite photo and write something personal.`}
+      onClose={close}
+      className="wish-sheet-dialog"
+    >
+      <form onSubmit={send}>
+        <Field label="Your name">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={80}
+            required
+            autoComplete="name"
+            placeholder="Your name"
+          />
+        </Field>
+        {photos.length > 0 && (
           <fieldset className="photo-choice">
             <legend>Choose one of their photos</legend>
             <div>
@@ -594,48 +585,57 @@ function WishSheet({
                   onClick={() => setPhoto(item.id)}
                   key={item.id}
                 >
-                  <img src={photoUrl(item.storage_path)} alt={item.alt_text} />
+                  <img src={photoUrl(item.storage_path)} alt={item.alt_text || "Photo"} />
                   {photo === item.id && <Check />}
                 </button>
               ))}
             </div>
           </fieldset>
-          <Field label="Birthday message">
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              maxLength={500}
-              required
-            />
-            <small>{500 - message.length} characters remaining</small>
-          </Field>
-          <fieldset className="visibility-choice">
-            <legend>Who can see this?</legend>
-            <button
-              type="button"
-              className={visibility === "public" ? "selected" : ""}
-              onClick={() => setVisibility("public")}
-            >
-              <strong>Public</strong>
-              <small>Everyone visiting this page can see your message.</small>
-            </button>
-            <button
-              type="button"
-              className={visibility === "private" ? "selected" : ""}
-              onClick={() => setVisibility("private")}
-            >
-              <strong>Private</strong>
-              <small>Only the Birthday Page owner can see your message.</small>
-            </button>
-          </fieldset>
-          {error && <div className="form-error">{error}</div>}
-          <Button type="submit" disabled={busy || !photo}>
-            {busy ? "Publishing your wish..." : "Publish Birthday Wish"}{" "}
-            <Heart />
-          </Button>
-        </form>
-      </motion.div>
-    </div>
+        )}
+        <Field label="Birthday message">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            maxLength={500}
+            required
+            placeholder="Write your birthday wishes here..."
+          />
+          <small>{500 - message.length} characters remaining</small>
+        </Field>
+        <fieldset className="visibility-choice">
+          <legend>Who can see this?</legend>
+          <button
+            type="button"
+            className={visibility === "public" ? "selected" : ""}
+            onClick={() => setVisibility("public")}
+          >
+            <strong>Public</strong>
+            <small>Everyone visiting this page can see your message.</small>
+          </button>
+          <button
+            type="button"
+            className={visibility === "private" ? "selected" : ""}
+            onClick={() => setVisibility("private")}
+          >
+            <strong>Private</strong>
+            <small>Only the Birthday Page owner can see your message.</small>
+          </button>
+          <button
+            type="button"
+            className={visibility === "anonymous" ? "selected" : ""}
+            onClick={() => setVisibility("anonymous")}
+          >
+            <strong>Anonymous</strong>
+            <small>Your wish appears without revealing your name.</small>
+          </button>
+        </fieldset>
+        {error && <div className="form-error">{error}</div>}
+        <Button type="submit" disabled={busy || !photo}>
+          {busy ? "Publishing your wish..." : "Publish Birthday Wish"}{" "}
+          <Heart weight="fill" />
+        </Button>
+      </form>
+    </Dialog>
   );
 }
 
@@ -666,6 +666,7 @@ function GiftCard({
   toast: (v: string) => void;
 }) {
   const [bank, setBank] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
   const account = accounts.find((a) => a.id === item.bank_account_id) ?? transferAccount;
   const money = useMemo(
     () =>
@@ -678,18 +679,35 @@ function GiftCard({
         : null,
     [item],
   );
+
+  const isFulfilled = item.status === "fulfilled";
+  const fulfillmentMsg = `Hi, my name is ${name}. Happy birthday! I'd like to fulfill your wish for ${item.name}. Could you share more details?`;
+
   return (
     <article className={`birthday-gift ${item.status}`}>
       <div className="gift-image">
         <ShoppingBag />
       </div>
-      <span>
-        {item.status === "fulfilled" ? "Wish Fulfilled" : "Available"}
-      </span>
+      <div className="gift-status-row">
+        <span className={`status-badge ${isFulfilled ? "fulfilled" : "available"}`}>
+          {isFulfilled ? "Wish Fulfilled 🎁" : "Available"}
+        </span>
+        {item.available_anywhere && (
+          <small className="available-anywhere-tag">Available anywhere</small>
+        )}
+      </div>
       <h3>{item.name}</h3>
-      <p>{item.description}</p>
+      {item.description && <p className="gift-desc">{item.description}</p>}
+      {item.availability_note && (
+        <p className="gift-avail-note">📍 {item.availability_note}</p>
+      )}
       {money && <strong>{money}</strong>}
-      {item.status !== "fulfilled" && (
+
+      {isFulfilled ? (
+        <div className="gift-fulfilled-notice">
+          <span>This wish has been fulfilled! 🎉</span>
+        </div>
+      ) : (
         <div className="gift-actions">
           {item.purchase_url && (
             <a
@@ -711,6 +729,15 @@ function GiftCard({
           >
             <WhatsappLogo /> I'd Like to Fulfil This
           </a>
+          {phone && (
+            <Button
+              variant="ghost"
+              className="fallback-toggle"
+              onClick={() => setShowFallback(!showFallback)}
+            >
+              WhatsApp Options
+            </Button>
+          )}
           {item.allow_bank_transfer && account && (
             <Button variant="ghost" onClick={() => setBank(!bank)}>
               Send Money Instead
@@ -718,7 +745,34 @@ function GiftCard({
           )}
         </div>
       )}
-      {bank && account && (
+
+      {showFallback && !isFulfilled && (
+        <div className="whatsapp-fallback-box">
+          <small>If WhatsApp does not open automatically:</small>
+          <div className="fallback-buttons">
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                await navigator.clipboard.writeText(phone);
+                toast("WhatsApp number copied");
+              }}
+            >
+              <Copy /> Copy WhatsApp Number
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                await navigator.clipboard.writeText(fulfillmentMsg);
+                toast("Fulfillment message copied");
+              }}
+            >
+              <Copy /> Copy Message
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {bank && account && !isFulfilled && (
         <div className="bank-reveal">
           <span>{account.bank_name}</span>
           <strong>{account.account_number}</strong>
@@ -972,13 +1026,19 @@ function SocialWishCard({
           {wish.visitor_name[0]?.toUpperCase() || "H"}
         </div>
         <div className="social-author">
-          <strong>{wish.visitor_name}</strong>
+          <strong>
+            {wish.visibility === "anonymous" ? "Anonymous Friend" : wish.visitor_name}
+          </strong>
           <small>
-            <span>Guest</span> · {timeAgo}
+            <span>{wish.visibility === "anonymous" ? "Anonymous" : "Guest"}</span> · {timeAgo}
           </small>
         </div>
         <span className="social-badge">
-          {wish.visibility === "private" ? "Private" : "Wish"}
+          {wish.visibility === "private"
+            ? "Private"
+            : wish.visibility === "anonymous"
+              ? "Anonymous"
+              : "Wish"}
         </span>
       </header>
 
@@ -1062,6 +1122,15 @@ function WishlistUnlockedDialog({
             }}
           >
             View Gift Ideas & Bank Details <ArrowRight />
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              onClose();
+              document.querySelector(".wish-wall")?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            View My Wish
           </Button>
         </div>
       </div>

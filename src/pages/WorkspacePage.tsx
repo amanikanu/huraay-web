@@ -244,7 +244,7 @@ export function WorkspacePage() {
             exit={{ opacity: 0, y: -4 }}
           >
             {section === "boards" && (
-              <Boards pages={pages} wishes={wishes} loading={loading} />
+              <Boards pages={pages} setPages={setPages} wishes={wishes} loading={loading} setToast={setToast} />
             )}
             {section === "wishes" && (
               <Wishes wishes={wishes} setWishes={setWishes} setToast={setToast} />
@@ -274,7 +274,40 @@ export function WorkspacePage() {
   );
 }
 
-function Boards({ pages, wishes, loading }: { pages: OwnerPage[]; wishes: OwnerWish[]; loading: boolean }) {
+function Boards({
+  pages,
+  setPages,
+  wishes,
+  loading,
+  setToast,
+}: {
+  pages: OwnerPage[];
+  setPages: React.Dispatch<React.SetStateAction<OwnerPage[]>>;
+  wishes: OwnerWish[];
+  loading: boolean;
+  setToast: (msg: string) => void;
+}) {
+  const archive = async (id: string) => {
+    if (!confirm("Archive this Birthday Page?")) return;
+    try {
+      await api.archiveBirthdayPage(id);
+      setPages((current) => current.filter((p) => p.id !== id));
+      setToast("Birthday Page archived");
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : "Page could not be archived");
+    }
+  };
+
+  const share = async (slug: string) => {
+    const url = `${location.origin}/b/${slug}`;
+    if (navigator.share) {
+      await navigator.share({ title: "Birthday Page", url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      setToast("Page link copied to clipboard");
+    }
+  };
+
   return (
     <>
       <section className="metrics">
@@ -295,7 +328,13 @@ function Boards({ pages, wishes, loading }: { pages: OwnerPage[]; wishes: OwnerW
               </div>
               <div className="owner-page-actions">
                 <Link className="button secondary" to={`/app/boards/${page.id}/edit`}>Edit</Link>
-                {page.status === "published" && <Link className="button primary" to={`/b/${page.slug}`}>View page</Link>}
+                {page.status === "published" && (
+                  <>
+                    <Link className="button primary" to={`/b/${page.slug}`}>View page</Link>
+                    <Button variant="secondary" onClick={() => void share(page.slug)}>Share</Button>
+                  </>
+                )}
+                <Button variant="danger" onClick={() => void archive(page.id)}>Archive</Button>
               </div>
             </article>
           ))}

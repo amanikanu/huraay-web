@@ -9,7 +9,7 @@ export type BoardDraftData = {
   transferAccountName: string;
   photos: File[];
   existingPhotoCount: number;
-  items: { name: string; price: string; url: string }[];
+  items: { name: string; price: string; url: string; description: string; availableAnywhere: boolean; availabilityNote: string }[];
   theme: string;
 };
 

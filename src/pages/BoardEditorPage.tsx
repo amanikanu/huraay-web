@@ -96,6 +96,9 @@ export function BoardEditorPage() {
               name: item.name,
               price: item.price == null ? "" : String(item.price),
               url: item.purchase_url ?? "",
+              description: item.description ?? "",
+              availableAnywhere: item.available_anywhere ?? true,
+              availabilityNote: item.availability_note ?? "",
             })),
             theme: page.theme_key,
           });
@@ -479,20 +482,28 @@ function Wishlist({ draft, set }: Props) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [availableAnywhere, setAvailableAnywhere] = useState(true);
+  const [availabilityNote, setAvailabilityNote] = useState("");
   const add = () => {
     if (!name) return;
-    set("items", [...draft.items, { name, price, url }]);
+    set("items", [
+      ...draft.items,
+      { name, price, url, description, availableAnywhere, availabilityNote },
+    ]);
     setName("");
     setPrice("");
     setUrl("");
+    setDescription("");
+    setAvailableAnywhere(true);
+    setAvailabilityNote("");
   };
   return (
     <>
       <span className="step-count">Your wishlist</span>
       <h1>What would make the day even better?</h1>
       <p>
-        Add up to five thoughtful ideas on Free. Bank details can be saved once
-        and reused.
+        Add thoughtful gift ideas, purchase links, or availability details for friends.
       </p>
       <div className="quick-item">
         <Field label="Item name">
@@ -510,6 +521,13 @@ function Wishlist({ draft, set }: Props) {
             placeholder="₦0"
           />
         </Field>
+        <Field label="Description (optional)">
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Color, brand or specific details"
+          />
+        </Field>
         <Field label="Purchase link (optional)">
           <input
             value={url}
@@ -518,6 +536,21 @@ function Wishlist({ draft, set }: Props) {
             placeholder="https://"
           />
         </Field>
+        <Field label="Availability note (optional)" hint="e.g. Size 44. Black only. Available from Jumia or Apple stores.">
+          <input
+            value={availabilityNote}
+            onChange={(e) => setAvailabilityNote(e.target.value)}
+            placeholder="Where to buy or preferences"
+          />
+        </Field>
+        <label className="checkbox-field">
+          <input
+            type="checkbox"
+            checked={availableAnywhere}
+            onChange={(e) => setAvailableAnywhere(e.target.checked)}
+          />
+          <span>Available anywhere / can be purchased offline</span>
+        </label>
         <Button variant="secondary" onClick={add}>
           <Plus /> Add item
         </Button>
@@ -531,7 +564,8 @@ function Wishlist({ draft, set }: Props) {
                 <strong>{item.name}</strong>
                 <small>
                   {item.price &&
-                    `₦${Number(item.price).toLocaleString("en-NG")}`}
+                    `₦${Number(item.price).toLocaleString("en-NG")} `}
+                  {item.availabilityNote && `· ${item.availabilityNote}`}
                 </small>
               </span>
               <button

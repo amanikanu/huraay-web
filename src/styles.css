@@ -927,18 +927,26 @@ button {
   inset: 0;
   background: rgba(21, 24, 20, 0.52);
   z-index: 1000;
-  display: grid;
-  place-items: center;
-  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .modal {
-  width: min(550px, 100%);
-  max-height: calc(100dvh - 40px);
-  overflow: auto;
+  width: min(540px, calc(100vw - 32px));
+  max-width: 100%;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overflow-x: hidden;
   background: #fff;
   border-radius: var(--radius);
-  padding: 40px;
+  padding: 32px 24px;
   position: relative;
+  box-sizing: border-box;
+  margin: auto;
 }
 .modal-close {
   position: absolute;
@@ -980,6 +988,7 @@ button {
 .modal textarea {
   display: block;
   width: 100%;
+  box-sizing: border-box;
   border: 1px solid #d7d8d1;
   border-radius: 10px;
   padding: 13px 14px;
@@ -5832,4 +5841,746 @@ body,
   .sticky-celebration-bar { bottom: 12px; width: calc(100% - 24px); }
   .sticky-celebrant-info strong { max-width: 140px; }
 }
+
+/* Enriched Wishlist and PRD styling */
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.checkbox-field input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent, #6223cf);
+  cursor: pointer;
+}
+.gift-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.available-anywhere-tag {
+  font-size: 10px;
+  background: rgba(98, 35, 207, 0.08);
+  color: #6223cf;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+.gift-desc {
+  font-size: 13px;
+  color: var(--muted, #666);
+  margin: 4px 0 8px;
+}
+.gift-avail-note {
+  font-size: 12px;
+  color: #d97706;
+  font-weight: 500;
+  margin: 4px 0 10px;
+}
+.gift-fulfilled-notice {
+  background: #f0fdf4;
+  color: #166534;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  margin-top: 12px;
+  border: 1px solid #bbf7d0;
+}
+.whatsapp-fallback-box {
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.whatsapp-fallback-box small {
+  color: #6b7280;
+  font-weight: 500;
+}
+.fallback-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fallback-toggle {
+  font-size: 12px !important;
+  color: var(--muted, #666) !important;
+}
+.status-badge.fulfilled {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+}
+
+/* WishSheet & Modal Mobile Responsiveness */
+.wish-sheet {
+  width: min(540px, calc(100vw - 32px));
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: auto;
+}
+.wish-sheet h2 {
+  font-size: clamp(22px, 5vw, 28px);
+  line-height: 1.25;
+  letter-spacing: -0.8px;
+  margin: 8px 0 6px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.wish-sheet > span {
+  font-size: 13px;
+  color: var(--accent, #6223cf);
+  font-weight: 600;
+}
+.wish-sheet p {
+  color: var(--muted, #666);
+  font-size: 14px;
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+/* Photo choice thumbnails */
+.photo-choice {
+  border: 0;
+  padding: 0;
+  margin: 16px 0;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.photo-choice legend {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: block;
+}
+.photo-choice > div {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 2px 10px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.photo-choice button {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: #f0f0ed;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.photo-choice button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.photo-choice button.selected {
+  border-color: var(--accent, #6223cf);
+  transform: scale(1.04);
+}
+.photo-choice button svg {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--accent, #6223cf);
+  color: #fff;
+  border-radius: 50%;
+  padding: 2px;
+  width: 14px;
+  height: 14px;
+}
+
+/* Visibility choice options */
+.visibility-choice {
+  border: 0;
+  padding: 0;
+  margin: 18px 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.visibility-choice legend {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: block;
+  grid-column: 1 / -1;
+}
+.visibility-choice button {
+  border: 1.5px solid var(--line, #e2e4dc);
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  width: 100%;
+}
+.visibility-choice button.selected {
+  border-color: var(--accent, #6223cf);
+  background: rgba(98, 35, 207, 0.05);
+}
+.visibility-choice button strong {
+  font-size: 14px;
+  color: var(--ink, #151814);
+}
+.visibility-choice button small {
+  font-size: 11px;
+  color: var(--muted, #666);
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Mobile responsive modal adjustments */
+@media (max-width: 768px) {
+  .modal-backdrop {
+    padding: 12px;
+    align-items: flex-end;
+  }
+  .modal {
+    padding: 24px 16px 20px;
+    max-height: calc(100dvh - 20px);
+    border-radius: 20px 20px 16px 16px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+  }
+  .visibility-choice {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .visibility-choice button {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 14px;
+  }
+  .visibility-choice button small {
+    text-align: left;
+    max-width: 100%;
+  }
+  .photo-choice button {
+    width: 64px;
+    height: 64px;
+    flex: 0 0 64px;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════
+   WORLD-CLASS RESPONSIVE & LAYOUT STYLES (DESKTOP + MOBILE)
+   ═════════════════════════════════════════════════════════════════════ */
+
+/* ── Container Bounds & Page Layout ─────────────────────────────────── */
+.birthday-page {
+  min-height: 100dvh;
+  background: #faf8fc;
+  color: #17131d;
+  font-family: inherit;
+  padding-bottom: 90px;
+}
+.birthday-container {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto 56px;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+.birthday-nav {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+/* ── Hero Section ───────────────────────────────────────────────────── */
+.birthday-hero {
+  position: relative;
+  width: 100%;
+  max-width: 1040px;
+  margin: 12px auto 48px;
+  border-radius: 28px;
+  overflow: hidden;
+  min-height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #1e0b36 0%, #2d1254 50%, #4a154b 100%);
+  box-shadow: 0 20px 50px rgba(27, 10, 48, 0.35);
+}
+.birthday-hero > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(8px) brightness(0.65);
+  transform: scale(1.05);
+}
+.birthday-hero-shade {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(30, 11, 54, 0.4) 0%, rgba(15, 5, 28, 0.85) 100%);
+}
+
+/* ── Introductory Personal Message ───────────────────────────────────── */
+.birthday-intro {
+  text-align: center;
+  max-width: 760px;
+  margin: 0 auto 48px;
+  padding: 36px 32px;
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid rgba(107, 37, 217, 0.08);
+  box-shadow: 0 12px 36px rgba(107, 37, 217, 0.04);
+  position: relative;
+}
+.birthday-intro svg {
+  color: #f53087;
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+.birthday-intro p {
+  font-size: clamp(17px, 2.5vw, 21px);
+  line-height: 1.65;
+  color: #272033;
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+/* ── Bento Photo Grid Layout ────────────────────────────────────────── */
+.bento-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  width: 100%;
+  margin: 24px 0 40px;
+}
+.bento-photo-item {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 0;
+  background: #f1ecf7;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.bento-photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
+}
+.bento-photo-item:hover img {
+  transform: scale(1.05);
+}
+
+/* ── Section Headers & Count Badges ─────────────────────────────────── */
+.birthday-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.birthday-section-head span {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #6b25d9;
+}
+.birthday-section-head h2 {
+  font-size: clamp(24px, 4vw, 34px);
+  letter-spacing: -1.2px;
+  margin: 4px 0 0;
+  color: #17131d;
+  font-weight: 800;
+}
+.wish-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #fff0f6;
+  color: #f53087;
+  font-weight: 700;
+  font-size: 14px;
+  border: 1px solid #fecdd3;
+  box-shadow: 0 4px 12px rgba(245, 48, 135, 0.1);
+}
+
+/* ── Social Wish Feed & Cards (Desktop Grid + Mobile Stack) ───────────── */
+.social-wish-feed {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.social-wish-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 24px;
+  padding: 24px 26px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.social-wish-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+}
+.social-wish-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.social-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 800;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+.social-author {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.social-author strong {
+  font-size: 16px;
+  color: #17131d;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.social-author small {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.social-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #f3e8ff;
+  color: #6b25d9;
+}
+.social-photo-attachment {
+  margin: 12px 0 16px;
+  border-radius: 16px;
+  overflow: hidden;
+  max-height: 320px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.social-photo-attachment img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.social-wish-body p {
+  font-size: 16px;
+  line-height: 1.65;
+  color: #272033;
+  margin: 0;
+  font-style: normal;
+  font-weight: 450;
+  word-break: break-word;
+}
+.social-wish-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.social-reactions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  justify-content: space-between;
+}
+.like-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+.like-button.liked {
+  background: #fff0f6;
+  color: #f53087;
+  border-color: #fecdd3;
+}
+.emoji-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.emoji-btn {
+  border: none;
+  background: #f3f4f6;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.emoji-btn:hover {
+  transform: scale(1.22);
+  background: #e5e7eb;
+}
+.emoji-btn.active {
+  background: #fdf4ff;
+  transform: scale(1.18);
+  box-shadow: 0 0 0 2px #d8b4fe;
+}
+
+/* ── Unlocked Wishlist & Gift Cards ─────────────────────────────────── */
+.wishlist-unlocked {
+  width: 100%;
+}
+.birthday-gifts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 24px;
+  width: 100%;
+  margin-top: 24px;
+}
+.birthday-gift {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.birthday-gift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.08);
+}
+.gift-image {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: #f3e8ff;
+  color: #6b25d9;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+}
+.birthday-gift h3 {
+  font-size: 20px;
+  margin: 0;
+  color: #17131d;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+.birthday-gift strong {
+  font-size: 22px;
+  color: #6b25d9;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+/* ── Transfer Details Card ───────────────────────────────────────────── */
+.transfer-card {
+  background: linear-gradient(135deg, #fefce8 0%, #fff7ed 100%);
+  border: 1.5px solid #fef08a;
+  border-radius: 28px;
+  padding: 36px 32px;
+  margin-top: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 12px 32px rgba(234, 179, 8, 0.08);
+}
+.transfer-card h3 {
+  font-size: 22px;
+  margin: 4px 0 8px;
+  color: #713f12;
+  font-weight: 800;
+}
+.bank-reveal {
+  background: #ffffff;
+  border: 1px solid #fef08a;
+  border-radius: 18px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bank-reveal span {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #a16207;
+  letter-spacing: 0.8px;
+}
+.bank-reveal strong {
+  font-size: 28px;
+  letter-spacing: 2px;
+  color: #17131d;
+  font-family: monospace;
+}
+
+/* ── Share CTA Section ──────────────────────────────────────────────── */
+.birthday-share {
+  text-align: center;
+  padding: 64px 36px;
+  background: linear-gradient(135deg, #6b25d9 0%, #4c1d95 100%);
+  color: #ffffff;
+  border-radius: 32px;
+  margin: 56px auto;
+  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 24px 50px rgba(107, 37, 217, 0.3);
+}
+.birthday-share svg {
+  font-size: 32px;
+  color: #f53087;
+}
+.birthday-share h2 {
+  font-size: clamp(26px, 4vw, 36px);
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+.birthday-share p {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 520px;
+  margin: 0 0 8px;
+}
+
+/* ── Discovery Bottom Banner ────────────────────────────────────────── */
+.birthday-discovery {
+  text-align: center;
+  padding: 56px 24px;
+  background: #ffffff;
+  border-top: 1px solid #f3e8ff;
+  margin-top: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ── Responsive Overrides (Tablet & Mobile) ────────────────────────── */
+@media (max-width: 900px) {
+  .bento-photo-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .bento-photo-item:first-child {
+    grid-column: span 2;
+    grid-row: span 1;
+    aspect-ratio: 16 / 10;
+  }
+}
+
+@media (max-width: 768px) {
+  .social-wish-feed {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .birthday-hero {
+    min-height: auto;
+    padding: 40px 16px;
+    border-radius: 20px;
+    margin-bottom: 32px;
+  }
+  .birthday-container {
+    padding: 0 16px;
+    margin-bottom: 40px;
+  }
+  .birthday-intro {
+    padding: 24px 20px;
+  }
+  .transfer-card {
+    padding: 24px 20px;
+  }
+  .birthday-share {
+    padding: 40px 20px;
+    border-radius: 24px;
+  }
+}
+
+
+
 

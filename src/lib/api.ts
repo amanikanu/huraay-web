@@ -249,7 +249,7 @@ export const api = {
         "id,slug,celebrant_name,birthday_date,headline,introduction,theme_key,status,show_fulfilled_items,transfer_bank_name,transfer_account_number,transfer_account_name",
       )
       .or(`slug.eq.${slug},vanity_slug.eq.${slug}`)
-      .eq("status", "published")
+      .neq("status", "archived")
       .single();
 
     if (pageErr || !page) throw pageErr ?? new Error("Birthday page not found");
@@ -938,7 +938,8 @@ export const api = {
           transfer_bank_name: transfer.bankName,
           transfer_account_number: transfer.accountNumber,
           transfer_account_name: transfer.accountName,
-          status: "draft",
+          status: "published",
+          published_at: new Date().toISOString(),
         })
         .select("id,slug")
         .single(),

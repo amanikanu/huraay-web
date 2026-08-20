@@ -86,7 +86,7 @@ export function BoardEditorPage() {
             date: page.birthday_date,
             headline: page.headline,
             intro: page.introduction ?? "",
-            whatsapp: page.whatsapp_number,
+            whatsapp: (page.whatsapp_number ?? "").replace(/^(\+?234|0)/, ""),
             transferBankName: page.transfer_bank_name ?? "",
             transferAccountNumber: page.transfer_account_number ?? "",
             transferAccountName: page.transfer_account_name ?? "",
@@ -452,23 +452,22 @@ function Photos({
         The first photo becomes your cover. Use the frame control on any photo
         to position your face.
       </p>
-      {isEditing ? (
-        <div className="preview-summary">
+      {isEditing && (
+        <div className="preview-summary" style={{ marginBottom: "16px" }}>
           <Image />
           <div>
-            <strong>{draft.existingPhotoCount} photos are preserved</strong>
+            <strong>{draft.existingPhotoCount} existing photos are preserved</strong>
             <p>
-              Your existing gallery remains unchanged while you edit the page.
+              Your existing gallery is safe. You can add new photos below.
             </p>
           </div>
         </div>
-      ) : (
-        <PhotoUploader
-          files={draft.photos}
-          onChange={(files) => set("photos", files)}
-          max={plan === "pro" ? 15 : 5}
-        />
       )}
+      <PhotoUploader
+        files={draft.photos}
+        onChange={(files) => set("photos", files)}
+        max={plan === "pro" ? 15 : 5}
+      />
       <div className="limit-note">
         <Image />
         <span>

@@ -310,14 +310,21 @@ export const api = {
     const client = requireSupabase();
     const token = `access_${crypto.randomUUID()}`;
 
+    const isAnonymous = payload.visibility === "anonymous";
+    const dbVisibility = payload.visibility === "private" ? "private" : "public";
+    const rawName = (payload.visitor_name ?? "").trim();
+    const dbVisitorName = isAnonymous
+      ? rawName || "Someone who loves you"
+      : rawName || "A friend";
+
     const { data: wish, error } = await client
       .from("birthday_wishes")
       .insert({
         page_id: payload.page_id,
         selected_photo_id: payload.selected_photo_id || null,
-        visitor_name: payload.visitor_name,
+        visitor_name: dbVisitorName,
         message: payload.message,
-        visibility: payload.visibility,
+        visibility: dbVisibility,
         moderation_status: "published",
       })
       .select("id")

@@ -594,8 +594,21 @@ export const api = {
       .select("id,display_name,full_name,default_whatsapp_e164,avatar_url")
       .eq("id", user.id)
       .single();
-    if (error) throw error;
-    return { ...data, email: user.email ?? "" };
+    if (error) {
+      return {
+        id: user.id,
+        display_name: (user.user_metadata?.display_name as string) || (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "",
+        full_name: (user.user_metadata?.full_name as string) || (user.user_metadata?.display_name as string) || "",
+        default_whatsapp_e164: "",
+        avatar_url: (user.user_metadata?.avatar_url as string) || null,
+        email: user.email ?? "",
+      };
+    }
+    return {
+      ...data,
+      avatar_url: data?.avatar_url || (user.user_metadata?.avatar_url as string) || null,
+      email: user.email ?? "",
+    };
   },
   async entitlement(): Promise<"free" | "pro"> {
     const client = requireSupabase();
@@ -608,9 +621,33 @@ export const api = {
     if (error) throw error;
     return data?.plan === "pro" ? "pro" : "free";
   },
+  async uploadAvatar(file: File) {
+    const client = requireSupabase();
+    const user = await requireUser(client, "Sign in to upload your photo");
+    const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const path = `avatars/${user.id}/${crypto.randomUUID()}-${cleanName}`;
+    const { error: uploadErr } = await retryOperation(() =>
+      client.storage
+        .from("birthday-media")
+        .upload(path, file, { contentType: file.type || "image/webp", upsert: true }),
+    );
+    if (uploadErr) throw uploadErr;
+    const { data: signed } = await client.storage
+      .from("birthday-media")
+      .createSignedUrl(path, 315360000);
+    const avatarUrl = signed?.signedUrl ?? null;
+    if (avatarUrl) {
+      await client
+        .from("profiles")
+        .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+        .eq("id", user.id);
+    }
+    return avatarUrl;
+  },
   async updateProfile(input: {
     full_name: string;
     default_whatsapp_e164?: string | null;
+    avatar_url?: string | null;
   }) {
     const client = requireSupabase();
     const user = await requireUser(client, "Sign in to update your profile");
@@ -620,6 +657,7 @@ export const api = {
         full_name: input.full_name.trim(),
         display_name: input.full_name.trim(),
         default_whatsapp_e164: input.default_whatsapp_e164 || null,
+        ...(input.avatar_url !== undefined ? { avatar_url: input.avatar_url } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", user.id);

@@ -25,13 +25,19 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button, Logo, Page } from "../components/ui";
 import { FloatingCelebration } from "../components/Celebration";
+import { useAuth } from "../lib/auth";
 
 export function HomePage() {
+  const { session, userProfile } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const heroY = useTransform(scrollYProgress, [0, 0.25], [0, reduce ? 0 : -34]);
+
+  const initial = userProfile?.full_name?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || "H";
+  const displayName = userProfile?.full_name || session?.user?.email?.split("@")[0] || "Account";
+
   return (
     <Page className="site-page">
       <header className="nav wrap">
@@ -42,10 +48,29 @@ export function HomePage() {
         >
           <a href="#how">How it works</a>
           <a href="#features">Features</a>
-          <Link to="/auth">Sign in</Link>
-          <Link className="button primary" to="/app/boards/new">
-            Create a board <ArrowRight />
-          </Link>
+          <a href="#pricing">Pricing</a>
+          {session ? (
+            <>
+              <Link to="/app" className="user-nav-chip" title="Go to Dashboard">
+                {userProfile?.avatar_url ? (
+                  <img src={userProfile.avatar_url} alt={displayName} className="user-nav-avatar" />
+                ) : (
+                  <span className="user-nav-initial">{initial}</span>
+                )}
+                <span>{displayName}</span>
+              </Link>
+              <Link className="button primary" to="/app">
+                Dashboard <ArrowRight />
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/auth">Sign in</Link>
+              <Link className="button primary" to="/app/boards/new">
+                Create a board <ArrowRight />
+              </Link>
+            </>
+          )}
         </nav>
         <button
           className="mobile-menu-button"
@@ -78,12 +103,25 @@ export function HomePage() {
               gifts.
             </p>
             <div className="actions">
-              <Link className="button primary" to="/app/boards/new">
-                Create My Birthday Page <ArrowRight />
-              </Link>
-              <a className="button secondary" href="#how">
-                <Play /> See How It Works
-              </a>
+              {session ? (
+                <>
+                  <Link className="button primary" to="/app">
+                    View Dashboard <ArrowRight />
+                  </Link>
+                  <Link className="button secondary" to="/app/boards/new">
+                    <Plus /> Create New Board
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link className="button primary" to="/app/boards/new">
+                    Create My Birthday Page <ArrowRight />
+                  </Link>
+                  <a className="button secondary" href="#how">
+                    <Play /> See How It Works
+                  </a>
+                </>
+              )}
             </div>
           </motion.div>
           <motion.div
@@ -391,9 +429,15 @@ export function HomePage() {
             <h2>Your birthday deserves its own place.</h2>
             <p>One link. Every wish, photo, wishlist item, and gift.</p>
           </div>
-          <Link className="button primary" to="/app/boards/new">
-            Create My Birthday Page <ArrowRight />
-          </Link>
+          {session ? (
+            <Link className="button primary" to="/app">
+              View Dashboard <ArrowRight />
+            </Link>
+          ) : (
+            <Link className="button primary" to="/app/boards/new">
+              Create My Birthday Page <ArrowRight />
+            </Link>
+          )}
         </section>
       </main>
       <footer className="sleek-footer">
@@ -421,10 +465,21 @@ export function HomePage() {
             </div>
             <div>
               <span>Account</span>
-              <Link to="/auth">Sign in</Link>
-              <Link to="/app/boards/new">
-                Create a page <ArrowUpRight />
-              </Link>
+              {session ? (
+                <>
+                  <Link to="/app">Dashboard</Link>
+                  <Link to="/app/boards/new">
+                    Create a page <ArrowUpRight />
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/auth">Sign in</Link>
+                  <Link to="/app/boards/new">
+                    Create a page <ArrowUpRight />
+                  </Link>
+                </>
+              )}
             </div>
             <div>
               <span>Legal</span>

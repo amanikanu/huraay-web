@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Bell,
+  Camera,
   ChartLine,
   CreditCard,
   Eye,
@@ -50,6 +51,7 @@ type Profile = {
   full_name: string;
   default_whatsapp_e164: string;
   email: string;
+  avatar_url?: string | null;
 };
 type PageEvent = { page_id: string; event_name: string; visitor_hash: string | null; wishlist_item_id: string | null; created_at: string };
 type TransferReceipt = {
@@ -131,6 +133,7 @@ export function WorkspacePage() {
           full_name: profileRow.full_name ?? profileRow.display_name ?? "",
           default_whatsapp_e164: profileRow.default_whatsapp_e164 ?? "",
           email: profileRow.email,
+          avatar_url: profileRow.avatar_url ?? null,
         });
         setPlan(entitlement);
         setEvents(eventRows as PageEvent[]);
@@ -216,7 +219,11 @@ export function WorkspacePage() {
           {plan === "free" && <Link to="/app/upgrade">Unlock Pro</Link>}
         </div>
         <button className="user-card" onClick={() => void signOut()}>
-          <span>{profile.full_name[0]?.toUpperCase() || "H"}</span>
+          {profile.avatar_url ? (
+            <img src={profile.avatar_url} alt={profile.full_name} className="user-card-avatar" />
+          ) : (
+            <span>{profile.full_name[0]?.toUpperCase() || "H"}</span>
+          )}
           <div>
             <strong>{profile.full_name || "Your profile"}</strong>
             <small>Sign out</small>
@@ -499,16 +506,47 @@ function Settings({
     }
   };
 
+  const { refreshProfile } = useAuth();
   const initial = profile.full_name?.[0]?.toUpperCase() || "H";
 
   return (
     <div className="settings-layout">
       {/* Profile hero */}
       <div className="settings-hero surface">
-        <div className="settings-avatar">{initial}</div>
+        <label className="settings-avatar-wrapper" title="Click to upload profile photo">
+          {profile.avatar_url ? (
+            <img src={profile.avatar_url} alt={profile.full_name} className="settings-avatar-img" />
+          ) : (
+            <div className="settings-avatar">{initial}</div>
+          )}
+          <span className="settings-avatar-overlay">
+            <Camera />
+          </span>
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                setToast("Uploading profile picture...");
+                const url = await api.uploadAvatar(file);
+                if (url) {
+                  setProfile((c) => ({ ...c, avatar_url: url }));
+                  await refreshProfile();
+                  setToast("Profile picture updated");
+                }
+              } catch (err) {
+                setToast(err instanceof Error ? err.message : "Could not upload photo");
+              }
+            }}
+          />
+        </label>
         <div className="settings-hero-info">
           <h2>{profile.full_name || "Your profile"}</h2>
           <span>{profile.email}</span>
+          <small className="settings-photo-hint">Click avatar photo to customize profile picture</small>
         </div>
       </div>
 

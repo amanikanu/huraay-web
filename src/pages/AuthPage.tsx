@@ -88,7 +88,7 @@ export function AuthPage() {
               }
             }}
           >
-            <GoogleLogo weight="bold" /> Continue with Google
+            <img src="/google-g-logo.svg" alt="Google" className="google-btn-icon" /> Continue with Google
           </button>
           <div className="or">
             <span />

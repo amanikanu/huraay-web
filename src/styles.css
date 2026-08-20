@@ -6670,6 +6670,16 @@ body,
   flex-shrink: 0;
 }
 
+.google-btn-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+
 
 
 

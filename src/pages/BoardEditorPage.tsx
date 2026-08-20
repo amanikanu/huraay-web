@@ -98,7 +98,7 @@ export function BoardEditorPage() {
               url: item.purchase_url ?? "",
               description: item.description ?? "",
               availableAnywhere: item.available_anywhere ?? true,
-              availabilityNote: item.availability_note ?? "",
+              availabilityNote: "",
             })),
             theme: page.theme_key,
           });

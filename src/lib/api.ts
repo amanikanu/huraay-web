@@ -354,7 +354,7 @@ export const api = {
         .single(),
       client
         .from("birthday_wishlist_items")
-        .select("id,name,description,price,currency,purchase_url,available_anywhere,availability_note,allow_bank_transfer,status")
+        .select("id,name,description,price,currency,purchase_url,available_anywhere,allow_bank_transfer,status")
         .eq("page_id", pageId)
         .order("sort_order"),
     ]);
@@ -377,7 +377,7 @@ export const api = {
         currency: item.currency ?? "NGN",
         purchase_url: item.purchase_url ?? undefined,
         available_anywhere: item.available_anywhere ?? true,
-        availability_note: item.availability_note ?? "",
+        availability_note: "",
         allow_bank_transfer: item.allow_bank_transfer ?? Boolean(transfer_account),
         status: item.status === "fulfilled" ? "fulfilled" : "available",
       })),
@@ -695,7 +695,7 @@ export const api = {
           .order("sort_order"),
         client
           .from("birthday_wishlist_items")
-          .select("id,name,price,purchase_url,description,available_anywhere,availability_note,sort_order")
+          .select("id,name,price,purchase_url,description,available_anywhere,sort_order")
           .eq("page_id", pageId)
           .order("sort_order"),
       ]);
@@ -804,18 +804,20 @@ export const api = {
                 currency: "NGN",
                 purchase_url: item.url,
                 available_anywhere: item.availableAnywhere,
-                availability_note: item.availabilityNote || null,
                 status: "available",
                 sort_order: index,
               })),
             );
           if (insertErr) {
+            console.warn("Primary wishlist insert warning:", insertErr.message);
             await client.from("birthday_wishlist_items").insert(
               itemsParsed.map((item, index) => ({
                 page_id: pageId,
                 name: item.name,
+                description: item.description || null,
                 price: item.price,
                 currency: "NGN",
+                purchase_url: item.url,
                 status: "available",
                 sort_order: index,
               })),
@@ -1012,20 +1014,22 @@ export const api = {
                   currency: "NGN",
                   purchase_url: item.url,
                   available_anywhere: item.availableAnywhere,
-                  availability_note: item.availabilityNote || null,
                   status: "available",
                   sort_order: index,
                 })),
               ),
             );
             if (itemError) {
+              console.warn("Wishlist item insert warning:", itemError.message);
               await retryOperation(async () =>
                 await client.from("birthday_wishlist_items").insert(
                   itemsParsed.map((item, index) => ({
                     page_id: page.id,
                     name: item.name,
+                    description: item.description || null,
                     price: item.price,
                     currency: "NGN",
+                    purchase_url: item.url,
                     status: "available",
                     sort_order: index,
                   })),

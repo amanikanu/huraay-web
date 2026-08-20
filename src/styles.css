@@ -6575,6 +6575,11 @@ body,
   .transfer-card {
     padding: 24px 20px;
   }
+  .birthday-share {
+    padding: 40px 20px;
+    border-radius: 24px;
+  }
+}
 
 /* ── User Profile & Avatar Styles ────────────────────────── */
 .user-card-avatar {

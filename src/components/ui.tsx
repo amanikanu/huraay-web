@@ -822,7 +822,7 @@ function FileImage({
 }) {
   // Use useState+useEffect instead of useMemo so the object URL lifecycle is
   // correctly sequenced: the cleanup (revokeObjectURL) only fires AFTER the
-  // component has unmounted or after the new URL is already in state — preventing
+  // component has unmounted or after the new URL is already in state - preventing
   // the broken-img-until-refresh bug where useMemo could revoke a URL that was
   // still referenced by an img element in the same render cycle.
   const [src, setSrc] = useState("");

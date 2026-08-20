@@ -990,7 +990,7 @@ export const api = {
         "Add your name, birthday date, WhatsApp number, and at least one photo before publishing",
       );
 
-    // 🎉 LAUNCH MODE: No page limits — everyone can create unlimited boards.
+    // 🎉 LAUNCH MODE: No page limits - everyone can create unlimited boards.
     // To re-enable limits, remove this comment block and restore the code below.
     /* --- Re-enable when billing goes live ---
     let entitlement: { plan: string } | null = null;

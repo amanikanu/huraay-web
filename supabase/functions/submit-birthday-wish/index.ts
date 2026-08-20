@@ -103,7 +103,7 @@ serve(async (request) => {
   if (accessError) {
     await db.from("birthday_wishes").delete().eq("id", wish.id);
     return json(
-      { error: "We could not finish publishing your wish. Your message is still in the form—please try again." },
+      { error: "We could not finish publishing your wish. Your message is still in the form - please try again." },
       500,
     );
   }

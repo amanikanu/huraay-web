@@ -215,7 +215,7 @@ export function WorkspacePage() {
           <Sparkle />
           <strong>Huraay ✨ Free</strong>
           <p>All features unlocked. Create unlimited boards.</p>
-          {/* 🎉 LAUNCH MODE: Upgrade prompt hidden — restore when billing goes live
+          {/* 🎉 LAUNCH MODE: Upgrade prompt hidden - restore when billing goes live
           {plan === "free" && <Link to="/app/upgrade">Unlock Pro</Link>}
           */}
         </div>

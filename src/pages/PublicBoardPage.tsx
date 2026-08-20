@@ -959,6 +959,32 @@ function TransferReceiptDialog({
   );
 }
 
+function formatTimeAgo(dateStr?: string | null): string {
+  if (!dateStr) return "Just now";
+  const timestamp = new Date(dateStr).getTime();
+  if (isNaN(timestamp)) return "Just now";
+
+  const now = Date.now();
+  const diffInSeconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+
+  if (diffInSeconds < 15) return "Just now";
+  if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays}d ago`;
+
+  return new Date(timestamp).toLocaleDateString("en-NG", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function SocialWishCard({
   wish,
   index,
@@ -972,12 +998,44 @@ function SocialWishCard({
   photoUrl: (p: string) => string;
   photos: PagePhoto[];
 }) {
-  const [likes, setLikes] = useState(() => Math.floor(Math.random() * 5) + 1);
-  const [liked, setLiked] = useState(false);
-  const [reaction, setReaction] = useState<string | null>(null);
+  const wishKey = `huraay_wish_react_${wish.id}`;
+
+  const [liked, setLiked] = useState(() => {
+    try {
+      return localStorage.getItem(`${wishKey}_liked`) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const [likes, setLikes] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`${wishKey}_count`);
+      if (stored !== null) return Math.max(0, parseInt(stored, 10));
+    } catch {}
+    return 0;
+  });
+
+  const [reaction, setReaction] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`${wishKey}_emoji`);
+    } catch {
+      return null;
+    }
+  });
+
+  const [timeAgo, setTimeAgo] = useState(() => formatTimeAgo(wish.created_at));
   const [bursts, setBursts] = useState<
     { id: string; emoji: string; left: number }[]
   >([]);
+
+  useEffect(() => {
+    setTimeAgo(formatTimeAgo(wish.created_at));
+    const timer = setInterval(() => {
+      setTimeAgo(formatTimeAgo(wish.created_at));
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [wish.created_at]);
 
   const triggerBurst = (emoji: string) => {
     const newBursts = Array.from({ length: 6 }).map((_, i) => ({
@@ -1003,25 +1061,39 @@ function SocialWishCard({
   ];
   const avatarBg = avatarColors[index % avatarColors.length];
 
-  const timeAgo = useMemo(() => {
-    const diff = Math.floor((Date.now() - new Date(wish.created_at).getTime()) / 1000);
-    if (diff < 60) return "Just now";
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return new Date(wish.created_at).toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "short",
-    });
-  }, [wish.created_at]);
-
   const toggleLike = () => {
     if (liked) {
-      setLikes((l) => l - 1);
+      const next = Math.max(0, likes - 1);
+      setLikes(next);
       setLiked(false);
+      try {
+        localStorage.setItem(`${wishKey}_liked`, "false");
+        localStorage.setItem(`${wishKey}_count`, String(next));
+      } catch {}
     } else {
-      setLikes((l) => l + 1);
+      const next = likes + 1;
+      setLikes(next);
       setLiked(true);
       triggerBurst("❤️");
+      try {
+        localStorage.setItem(`${wishKey}_liked`, "true");
+        localStorage.setItem(`${wishKey}_count`, String(next));
+      } catch {}
+    }
+  };
+
+  const toggleEmoji = (emoji: string) => {
+    if (reaction === emoji) {
+      setReaction(null);
+      try {
+        localStorage.removeItem(`${wishKey}_emoji`);
+      } catch {}
+    } else {
+      setReaction(emoji);
+      triggerBurst(emoji);
+      try {
+        localStorage.setItem(`${wishKey}_emoji`, emoji);
+      } catch {}
     }
   };
 
@@ -1052,7 +1124,7 @@ function SocialWishCard({
         </div>
         <div className="social-author">
           <strong>
-            {wish.visibility === "anonymous" ? "Anonymous Friend" : wish.visitor_name}
+            {wish.visibility === "anonymous" ? "Someone who loves you" : wish.visitor_name}
           </strong>
           <small>
             <span>{wish.visibility === "anonymous" ? "Anonymous" : "Guest"}</span> · {timeAgo}
@@ -1098,10 +1170,7 @@ function SocialWishCard({
                 key={emoji}
                 type="button"
                 className={`emoji-btn ${reaction === emoji ? "active" : ""}`}
-                onClick={() => {
-                  setReaction(reaction === emoji ? null : emoji);
-                  triggerBurst(emoji);
-                }}
+                onClick={() => toggleEmoji(emoji)}
               >
                 {emoji}
               </button>

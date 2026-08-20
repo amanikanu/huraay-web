@@ -4,6 +4,7 @@ import {
   Bell,
   Camera,
   ChartLine,
+  Copy,
   CreditCard,
   Eye,
   Gift,
@@ -305,14 +306,26 @@ function Boards({
     }
   };
 
-  const share = async (slug: string) => {
-    const url = `${location.origin}/b/${slug}`;
-    if (navigator.share) {
-      await navigator.share({ title: "Birthday Page", url });
-    } else {
-      await navigator.clipboard.writeText(url);
-      setToast("Page link copied to clipboard");
+  const copyLink = async (slug: string) => {
+    const url = `${window.location.origin}/b/${slug}`;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+        setToast("Page link copied to clipboard!");
+        return;
+      }
+    } catch {
+      // fallback
     }
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Birthday Page", url });
+        return;
+      } catch {
+        // cancelled
+      }
+    }
+    window.prompt("Copy your Birthday Page link:", url);
   };
 
   return (
@@ -338,7 +351,9 @@ function Boards({
                 {page.status === "published" && (
                   <>
                     <Link className="button primary" to={`/b/${page.slug}`}>View page</Link>
-                    <Button variant="secondary" onClick={() => void share(page.slug)}>Share</Button>
+                    <Button variant="secondary" onClick={() => void copyLink(page.slug)}>
+                      <Copy /> Copy Link
+                    </Button>
                   </>
                 )}
                 <Button variant="danger" onClick={() => void archive(page.id)}>Archive</Button>

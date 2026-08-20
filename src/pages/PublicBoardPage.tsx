@@ -154,22 +154,39 @@ export function PublicBoardPage() {
           : `Celebrated ${page.celebrant_name} on ${new Intl.DateTimeFormat("en-NG", { month: "short", day: "numeric" }).format(date)}`;
   const photoUrl = (path: string) =>
     photos.find((photo) => photo.storage_path === path)?.signed_url ?? "";
-  async function share() {
+  async function copyOrShareLink() {
     void api.recordPageEvent(page.id, "share");
-    if (navigator.share)
-      await navigator.share({ title: page.headline, url: location.href });
-    else {
-      await navigator.clipboard.writeText(location.href);
-      setToast("Birthday link copied");
+    const shareUrl = `${window.location.origin}/b/${page.slug}`;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+        setToast("Birthday link copied! Anyone with this link can view & leave a wish.");
+        return;
+      }
+    } catch {
+      // fallback
     }
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: page.headline, url: shareUrl });
+        return;
+      } catch {
+        // user cancelled
+      }
+    }
+    window.prompt("Copy your Birthday Page link:", shareUrl);
   }
+  const share = copyOrShareLink;
+
   return (
     <Page className={`birthday-page theme-${page.theme_key}`}>
       <header className="birthday-nav">
         <Logo />
-        <Button variant="secondary" onClick={share}>
-          <ShareNetwork /> Share
-        </Button>
+        <div className="birthday-nav-actions">
+          <Button variant="secondary" onClick={copyOrShareLink}>
+            <Copy /> Copy Link
+          </Button>
+        </div>
       </header>
       <main>
         <section className="birthday-hero hero-worldclass">

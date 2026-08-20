@@ -702,10 +702,12 @@ export const api = {
       transferAccountNumber?: string | null;
       transferAccountName?: string | null;
       theme?: string | null;
+      photos?: File[];
       items: { name: string; price: string; url: string; description: string; availableAnywhere: boolean; availabilityNote: string }[];
     },
   ) {
     const client = requireSupabase();
+    const user = await requireUser(client, "Sign in to update your Birthday Page");
     const name = text(input.name).trim();
     const date = text(input.date).trim();
     const headline = text(input.headline).trim();
@@ -728,9 +730,32 @@ export const api = {
         transfer_bank_name: transfer.bankName,
         transfer_account_number: transfer.accountNumber,
         transfer_account_name: transfer.accountName,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", pageId);
     if (pageError) throw pageError;
+
+    // Upload new photos if provided during edit
+    if (input.photos && input.photos.length > 0) {
+      const { count } = await client
+        .from("page_photos")
+        .select("id", { count: "exact" })
+        .eq("page_id", pageId);
+      const startSort = count ?? 0;
+
+      for (const [index, file] of input.photos.entries()) {
+        const path = await this.uploadBirthdayPhoto(user.id, pageId, file);
+        await retryOperation(async () =>
+          await client.from("page_photos").insert({
+            page_id: pageId,
+            storage_path: path,
+            alt_text: `${name}'s birthday photo`,
+            sort_order: startSort + index,
+            is_cover: startSort === 0 && index === 0,
+          }),
+        );
+      }
+    }
     const { error: deleteError } = await client
       .from("birthday_wishlist_items")
       .delete()

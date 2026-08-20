@@ -163,9 +163,9 @@ export function BoardEditorPage() {
     setError("");
     try {
       if (id) {
-        await api.updateBirthdayPage(id, draft);
+        const { slug } = await api.updateBirthdayPage(id, draft);
         setPublished(true);
-        setTimeout(() => navigate("/app"), 1000);
+        setTimeout(() => navigate(`/b/${slug}`), 1200);
         return;
       }
       const page = await api.publishBirthdayPage(draft);

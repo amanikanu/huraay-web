@@ -730,9 +730,13 @@ export const api = {
         transfer_bank_name: transfer.bankName,
         transfer_account_number: transfer.accountNumber,
         transfer_account_name: transfer.accountName,
+        status: "published",
+        published_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", pageId);
+      .eq("id", pageId)
+      .select("slug")
+      .single();
     if (pageError) throw pageError;
 
     // Upload new photos if provided during edit
@@ -808,6 +812,13 @@ export const api = {
         }
       }
     }
+    // Fetch the slug so the caller can redirect to the live page
+    const { data: refreshed } = await client
+      .from("birthday_pages")
+      .select("slug")
+      .eq("id", pageId)
+      .single();
+    return { slug: refreshed?.slug as string };
   },
   async archiveBirthdayPage(pageId: string) {
     const client = requireSupabase();

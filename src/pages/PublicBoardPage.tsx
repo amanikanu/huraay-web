@@ -152,8 +152,16 @@ export function PublicBoardPage() {
         : days === 0
           ? `Today is ${page.celebrant_name}'s Birthday`
           : `Celebrated ${page.celebrant_name} on ${new Intl.DateTimeFormat("en-NG", { month: "short", day: "numeric" }).format(date)}`;
-  const photoUrl = (path: string) =>
-    photos.find((photo) => photo.storage_path === path)?.signed_url ?? "";
+  const photoUrl = (path: string) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) return path;
+    const found = photos.find((photo) => photo.storage_path === path || photo.signed_url === path);
+    if (found?.signed_url) return found.signed_url;
+    if (found?.storage_path && (found.storage_path.startsWith("http://") || found.storage_path.startsWith("https://"))) {
+      return found.storage_path;
+    }
+    return `https://sgaxuauyztynpuchzzxh.supabase.co/storage/v1/object/public/birthday-media/${path}`;
+  };
   async function copyOrShareLink() {
     void api.recordPageEvent(page.id, "share");
     const shareUrl = `${window.location.origin}/b/${page.slug}`;

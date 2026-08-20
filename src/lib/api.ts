@@ -274,7 +274,7 @@ export const api = {
         try {
           const { data } = await client.storage
             .from("birthday-media")
-            .createSignedUrl(photo.storage_path, 86400);
+            .createSignedUrl(photo.storage_path, 315360000);
           if (data?.signedUrl) {
             url = data.signedUrl;
           } else {
@@ -285,7 +285,8 @@ export const api = {
         }
         return {
           ...photo,
-          storage_path: url,
+          storage_path: photo.storage_path,
+          signed_url: url,
         };
       }),
     );

@@ -6052,15 +6052,6 @@ body,
   font-size: 12px;
   padding: 6px 12px;
 }
-  top: 4px;
-  right: 4px;
-  background: var(--accent, #6223cf);
-  color: #fff;
-  border-radius: 50%;
-  padding: 2px;
-  width: 14px;
-  height: 14px;
-}
 
 /* Visibility choice options */
 .visibility-choice {

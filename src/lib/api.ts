@@ -915,6 +915,16 @@ export const api = {
       .eq("id", pageId);
     if (error) throw error;
   },
+  async deleteBirthdayPage(pageId: string) {
+    const client = requireSupabase();
+    const user = await requireUser(client, "Sign in to delete page");
+    const { error } = await client
+      .from("birthday_pages")
+      .delete()
+      .eq("id", pageId)
+      .eq("owner_id", user.id);
+    if (error) throw error;
+  },
   async submitManualPayment(input: {
     sender_name: string;
     transfer_date: string;

@@ -306,6 +306,24 @@ function Boards({
     }
   };
 
+  const removePage = async (id: string, name: string) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete ${name}'s birthday page permanently? This will remove all photos, wishes, and wishlist items. This action cannot be undone.`,
+      )
+    )
+      return;
+    try {
+      await api.deleteBirthdayPage(id);
+      setPages((current) => current.filter((p) => p.id !== id));
+      setToast(`${name}'s Birthday Page permanently deleted`);
+    } catch (err) {
+      setToast(
+        err instanceof Error ? err.message : "Page could not be deleted",
+      );
+    }
+  };
+
   const copyLink = async (slug: string) => {
     const url = `${window.location.origin}/b/${slug}`;
     try {
@@ -356,7 +374,10 @@ function Boards({
                     </Button>
                   </>
                 )}
-                <Button variant="danger" onClick={() => void archive(page.id)}>Archive</Button>
+                <Button variant="secondary" onClick={() => void archive(page.id)}>Archive</Button>
+                <Button variant="danger" onClick={() => void removePage(page.id, page.celebrant_name)}>
+                  <Trash /> Delete
+                </Button>
               </div>
             </article>
           ))}

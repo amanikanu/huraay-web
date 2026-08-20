@@ -192,7 +192,9 @@ export function WorkspacePage() {
     };
   }, [notificationsEnabled, pages]);
 
-  const createLink = plan === "free" && pages.length ? "/app/upgrade" : "/app/boards/new";
+  // 🎉 LAUNCH MODE: all users go straight to board creation.
+  // Restore: plan === "free" && pages.length ? "/app/upgrade" : "/app/boards/new"
+  const createLink = "/app/boards/new";
   return (
     <Page className="workspace">
       <aside className="workspace-side">
@@ -211,13 +213,11 @@ export function WorkspacePage() {
         </nav>
         <div className="workspace-help">
           <Sparkle />
-          <strong>{plan === "pro" ? "Huraay Pro" : "Free plan"}</strong>
-          <p>
-            {plan === "pro"
-              ? "Your lifetime Pro access is active."
-              : "Unlock more pages, themes, and analytics for \u20a62,000 once."}
-          </p>
+          <strong>Huraay ✨ Free</strong>
+          <p>All features unlocked. Create unlimited boards.</p>
+          {/* 🎉 LAUNCH MODE: Upgrade prompt hidden — restore when billing goes live
           {plan === "free" && <Link to="/app/upgrade">Unlock Pro</Link>}
+          */}
         </div>
         <button className="user-card" onClick={() => void signOut()}>
           {profile.avatar_url ? (
@@ -240,7 +240,7 @@ export function WorkspacePage() {
           </div>
           {section === "boards" && (
             <Link className="button primary" to={createLink}>
-              <Plus /> {plan === "free" && pages.length ? "Create another with Pro" : "New page"}
+              <Plus /> New page
             </Link>
           )}
         </header>
@@ -473,8 +473,9 @@ function Transfers({ receipts }: { receipts: TransferReceipt[] }) {
   );
 }
 function Analytics({ events, plan }: { events: PageEvent[]; plan: "free" | "pro" }) {
-  if (plan !== "pro")
-    return <section className="surface fresh-start"><Empty icon={<ChartLine />} title="Understand every interaction with Pro" copy="See page views, unique visitors, wishlist unlocks, gift clicks, bank copies, and WhatsApp intent." action={<Link className="button primary" to="/app/upgrade">Unlock Pro for ₦2,000</Link>} /></section>;
+  // 🎉 LAUNCH MODE: Analytics visible to all users.
+  // Restore gate: if (plan !== "pro") return <section ...>...</section>
+  void plan; // kept so prop signature stays intact for future re-activation
   const count = (name: string) => events.filter((event) => event.event_name === name).length;
   const uniqueVisitors = new Set(events.filter((event) => event.event_name === "page_view").map((event) => event.visitor_hash).filter(Boolean)).size;
   return <><section className="metrics"><div><strong>{count("page_view")}</strong><span>Page views</span><small>{uniqueVisitors} unique visitors</small></div><div><strong>{count("wishlist_unlocked")}</strong><span>Wishlist unlocks</span><small>{count("gift_clicked")} purchase clicks</small></div><div><strong>{count("whatsapp_intent")}</strong><span>WhatsApp intents</span><small>{count("bank_copied")} bank copies</small></div></section><section className="surface fresh-start"><h2>Birthday funnel</h2><p>{uniqueVisitors} visitors → {count("wish_submitted")} wishes → {count("wishlist_unlocked")} unlocks → {count("gift_clicked") + count("bank_copied") + count("whatsapp_intent")} gift interactions.</p></section></>;

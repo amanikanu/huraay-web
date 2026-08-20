@@ -611,6 +611,10 @@ export const api = {
     };
   },
   async entitlement(): Promise<"free" | "pro"> {
+    // 🎉 LAUNCH MODE: All users get Pro for free.
+    // To re-enable billing, remove the line below and uncomment the block.
+    return "pro";
+    /* --- Re-enable when billing goes live ---
     const client = requireSupabase();
     const user = await requireUser(client, "Sign in to view your plan");
     const { data, error } = await client
@@ -620,6 +624,7 @@ export const api = {
       .single();
     if (error) throw error;
     return data?.plan === "pro" ? "pro" : "free";
+    --- End billing block --- */
   },
   async uploadAvatar(file: File) {
     const client = requireSupabase();
@@ -893,7 +898,9 @@ export const api = {
         "Add your name, birthday date, WhatsApp number, and at least one photo before publishing",
       );
 
-    // Entitlement check - fault tolerant fallback to free if network/RLS issues occur
+    // 🎉 LAUNCH MODE: No page limits — everyone can create unlimited boards.
+    // To re-enable limits, remove this comment block and restore the code below.
+    /* --- Re-enable when billing goes live ---
     let entitlement: { plan: string } | null = null;
     try {
       const res = await client
@@ -905,8 +912,6 @@ export const api = {
     } catch {
       entitlement = null;
     }
-
-    // Page count check - fault tolerant fallback to 0 if count query fails
     let pageCount = 0;
     try {
       const res = await client
@@ -918,12 +923,12 @@ export const api = {
     } catch {
       pageCount = 0;
     }
-
     if ((entitlement?.plan ?? "free") !== "pro" && pageCount >= 1) {
       throw new Error(
         "Free accounts can publish one Birthday Page. Edit your existing page or unlock Pro to create another.",
       );
     }
+    --- End billing block --- */
 
     const slugBase =
       name

@@ -605,17 +605,15 @@ function Design({
           ["clean", "Clean", "Free"],
           ["editorial", "Editorial", "Free"],
           ["soft", "Soft", "Free"],
-          ["luxe", "Luxe", "Pro"],
-          ["bold", "Bold", "Pro"],
-          ["romantic", "Romantic", "Pro"],
+          ["luxe", "Luxe", "Free"],   // 🎉 LAUNCH MODE: unlocked
+          ["bold", "Bold", "Free"],   // 🎉 LAUNCH MODE: unlocked
+          ["romantic", "Romantic", "Free"], // 🎉 LAUNCH MODE: unlocked
         ].map(([key, name, tier]) => (
           <button
             className={draft.theme === key ? "selected" : ""}
             onClick={() => {
-              if (tier === "Pro" && plan !== "pro") {
-                onProSelect(`${name} theme`);
-                return;
-              }
+              // 🎉 LAUNCH MODE: all themes free.
+              // Restore Pro check: if (tier === "Pro" && plan !== "pro") { onProSelect(`${name} theme`); return; }
               set("theme", key);
             }}
             key={key}

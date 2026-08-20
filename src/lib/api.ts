@@ -317,11 +317,27 @@ export const api = {
       ? rawName || "Someone who loves you"
       : rawName || "A friend";
 
+    let photoId = payload.selected_photo_id || null;
+    if (!photoId) {
+      try {
+        const { data: firstPhoto } = await client
+          .from("page_photos")
+          .select("id")
+          .eq("page_id", payload.page_id)
+          .order("sort_order")
+          .limit(1)
+          .maybeSingle();
+        if (firstPhoto?.id) photoId = firstPhoto.id;
+      } catch {
+        photoId = null;
+      }
+    }
+
     const { data: wish, error } = await client
       .from("birthday_wishes")
       .insert({
         page_id: payload.page_id,
-        selected_photo_id: payload.selected_photo_id || null,
+        ...(photoId ? { selected_photo_id: photoId } : {}),
         visitor_name: dbVisitorName,
         message: payload.message,
         visibility: dbVisibility,

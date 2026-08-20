@@ -215,11 +215,6 @@ export function PublicBoardPage() {
               )}
             </div>
 
-            <div className="hero-badge">
-              <Sparkle weight="fill" />
-              <span>{countdown}</span>
-            </div>
-
             <h1>{page.headline}</h1>
 
             <p className="hero-date-text">

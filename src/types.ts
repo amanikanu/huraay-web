@@ -70,6 +70,8 @@ export interface BirthdayWish {
   visitor_name: string;
   message: string;
   selected_photo_id: string;
+  custom_photo_path?: string | null;
+  custom_photo_url?: string | null;
   created_at: string;
   pinned_at?: string | null;
   visibility?: "public" | "private" | "anonymous";

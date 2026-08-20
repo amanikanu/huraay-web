@@ -6,6 +6,7 @@ import {
   Copy,
   Gift,
   Heart,
+  Image,
   Lock,
   ShareNetwork,
   ShoppingBag,
@@ -535,6 +536,8 @@ function WishSheet({
     saved.visibility === "private" ? "private" : saved.visibility === "anonymous" ? "anonymous" : "public",
   );
   const [photo, setPhoto] = useState(saved.photo || photos[0]?.id || "");
+  const [customPhotoFile, setCustomPhotoFile] = useState<File | null>(null);
+  const [customPhotoPreview, setCustomPhotoPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function send(e: React.FormEvent) {
@@ -550,6 +553,7 @@ function WishSheet({
         visibility,
         started_at: startedAt,
         website: "",
+        custom_photo_file: customPhotoFile,
       });
       localStorage.removeItem(`huraay_wish_draft_${page.id}`);
       const newWish: BirthdayWish = {
@@ -557,6 +561,7 @@ function WishSheet({
         visitor_name: name,
         message,
         selected_photo_id: photo,
+        custom_photo_url: res.custom_photo_url,
         created_at: new Date().toISOString(),
         visibility,
       };
@@ -596,19 +601,58 @@ function WishSheet({
         </Field>
         {photos.length > 0 && (
           <fieldset className="photo-choice">
-            <legend>Choose one of their photos</legend>
+            <legend>Choose a photo or upload your own</legend>
             <div>
               {photos.map((item) => (
                 <button
                   type="button"
-                  className={photo === item.id ? "selected" : ""}
-                  onClick={() => setPhoto(item.id)}
+                  className={!customPhotoFile && photo === item.id ? "selected" : ""}
+                  onClick={() => {
+                    setCustomPhotoFile(null);
+                    setCustomPhotoPreview(null);
+                    setPhoto(item.id);
+                  }}
                   key={item.id}
                 >
                   <img src={photoUrl(item.storage_path)} alt={item.alt_text || "Photo"} />
-                  {photo === item.id && <Check />}
+                  {!customPhotoFile && photo === item.id && <Check />}
                 </button>
               ))}
+            </div>
+            <div className="custom-photo-option">
+              {customPhotoPreview ? (
+                <div className="custom-photo-preview">
+                  <img src={customPhotoPreview} alt="Custom wish photo" />
+                  <button
+                    type="button"
+                    className="button secondary remove-custom-btn"
+                    onClick={() => {
+                      setCustomPhotoFile(null);
+                      setCustomPhotoPreview(null);
+                      setPhoto(photos[0]?.id || "");
+                    }}
+                  >
+                    <X /> Remove photo
+                  </button>
+                </div>
+              ) : (
+                <label className="upload-custom-photo-btn">
+                  <Image />
+                  <span>Upload a photo from your phone</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif,image/heic"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setCustomPhotoFile(file);
+                        setCustomPhotoPreview(URL.createObjectURL(file));
+                        setPhoto("");
+                      }
+                    }}
+                  />
+                </label>
+              )}
             </div>
           </fieldset>
         )}
@@ -650,7 +694,7 @@ function WishSheet({
           </button>
         </fieldset>
         {error && <div className="form-error">{error}</div>}
-        <Button type="submit" disabled={busy || !photo}>
+        <Button type="submit" disabled={busy || (!photo && !customPhotoFile)}>
           {busy ? "Publishing your wish..." : "Publish Birthday Wish"}{" "}
           <Heart weight="fill" />
         </Button>
@@ -1134,11 +1178,11 @@ function SocialWishCard({
         </span>
       </header>
 
-      {photo && (
+      {(wish.custom_photo_url || photo) && (
         <div className="social-photo-attachment">
           <img
-            src={photoUrl(photo.storage_path)}
-            alt={photo.alt_text || `Photo selected for ${celebrantName}`}
+            src={wish.custom_photo_url ? wish.custom_photo_url : photoUrl(photo!.storage_path)}
+            alt={photo?.alt_text || `Photo for ${celebrantName}`}
           />
         </div>
       )}

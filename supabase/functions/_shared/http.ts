@@ -1,3 +1,5 @@
+declare const Deno: { env: { get(key: string): string | undefined } };
+
 export const corsHeaders = {
   "Access-Control-Allow-Origin": Deno.env.get("APP_ORIGIN") ?? "",
   "Access-Control-Allow-Headers":

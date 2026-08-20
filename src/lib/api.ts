@@ -270,22 +270,31 @@ export const api = {
 
     const safePhotos = await Promise.all(
       (photos ?? []).map(async (photo) => {
-        const { data } = await client.storage
-          .from("birthday-media")
-          .createSignedUrl(photo.storage_path, 3600);
-        return { ...photo, signed_url: data?.signedUrl };
+        let url = photo.storage_path;
+        try {
+          const { data } = await client.storage
+            .from("birthday-media")
+            .createSignedUrl(photo.storage_path, 86400);
+          if (data?.signedUrl) {
+            url = data.signedUrl;
+          } else {
+            url = client.storage.from("birthday-media").getPublicUrl(photo.storage_path).data.publicUrl;
+          }
+        } catch {
+          url = client.storage.from("birthday-media").getPublicUrl(photo.storage_path).data.publicUrl;
+        }
+        return {
+          ...photo,
+          storage_path: url,
+        };
       }),
-    );
-
-    const publicWishes = (wishes ?? []).filter(
-      (w) => w.moderation_status === "published" || w.moderation_status === "pending",
     );
 
     return {
       page,
       photos: safePhotos,
-      wishes: publicWishes,
-      wish_count: publicWishes.length,
+      wishes: (wishes ?? []) as BirthdayWish[],
+      wish_count: (wishes ?? []).length,
     };
   },
   async submitBirthdayWish(payload: {
@@ -304,7 +313,7 @@ export const api = {
       .from("birthday_wishes")
       .insert({
         page_id: payload.page_id,
-        selected_photo_id: payload.selected_photo_id,
+        selected_photo_id: payload.selected_photo_id || null,
         visitor_name: payload.visitor_name,
         message: payload.message,
         visibility: payload.visibility,

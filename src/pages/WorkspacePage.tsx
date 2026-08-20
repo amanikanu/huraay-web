@@ -240,7 +240,7 @@ export function WorkspacePage() {
           </div>
           {section === "boards" && (
             <Link className="button primary" to={createLink}>
-              <Plus /> New page
+              <Plus /> Add New Board
             </Link>
           )}
         </header>
@@ -384,7 +384,7 @@ function Boards({
         </section>
       ) : (
         <section className="surface fresh-start">
-          <Empty icon={<Sparkle />} title="Your next celebration starts here" copy="Create a Birthday Page, add your photos, and share one link." action={<Link className="button primary" to="/app/boards/new"><Plus /> Create a page</Link>} />
+          <Empty icon={<Sparkle />} title="Your next celebration starts here" copy="Create a Birthday Board, add your photos, and share one link." action={<Link className="button primary" to="/app/boards/new"><Plus /> Add New Board</Link>} />
         </section>
       )}
     </>

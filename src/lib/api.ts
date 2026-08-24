@@ -89,9 +89,16 @@ async function loadPublicWishes(client: ReturnType<typeof requireSupabase>, page
   return result.data ?? [];
 }
 
+const LAUNCH_PRO_RPC_KEY = "huraay_grant_launch_pro_rpc";
+
 async function ensureLaunchProEntitlement(client: ReturnType<typeof requireSupabase>) {
-  const { error: rpcError } = await client.rpc("grant_launch_pro");
-  if (!rpcError) return;
+  if (sessionStorage.getItem(LAUNCH_PRO_RPC_KEY) !== "missing") {
+    const { error: rpcError } = await client.rpc("grant_launch_pro");
+    if (!rpcError) return;
+    if (rpcError.code === "PGRST202") {
+      sessionStorage.setItem(LAUNCH_PRO_RPC_KEY, "missing");
+    }
+  }
 
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -102,13 +109,72 @@ async function ensureLaunchProEntitlement(client: ReturnType<typeof requireSupab
   } = await client.auth.getSession();
   if (!session?.access_token) return;
 
-  await fetch(`${url}/functions/v1/grant-launch-pro`, {
+  const response = await fetch(`${url}/functions/v1/grant-launch-pro`, {
     method: "POST",
     headers: {
       apikey: key,
       Authorization: `Bearer ${session.access_token}`,
     },
-  }).catch(() => undefined);
+  }).catch(() => null);
+
+  if (response?.ok) return;
+}
+
+function proGateSetupError() {
+  return new Error(
+    "Launch setup is incomplete in Supabase. Run the launch SQL in the Supabase dashboard, then try again.",
+  );
+}
+
+async function saveBirthdayPageViaEdge(input: {
+  pageId: string;
+  name: string;
+  date: string;
+  headline: string;
+  intro: string;
+  phone: string;
+  theme: string;
+  transfer: { bankName: string | null; accountNumber: string | null; accountName: string | null };
+}) {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const client = requireSupabase();
+  const {
+    data: { session },
+  } = await client.auth.getSession();
+  if (!url || !key || !session?.access_token) return null;
+
+  const response = await fetch(`${url}/functions/v1/update-birthday-page`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${session.access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      page_id: input.pageId,
+      celebrant_name: input.name,
+      birthday_date: input.date,
+      headline: input.headline,
+      introduction: input.intro,
+      whatsapp_number: input.phone,
+      theme_key: input.theme,
+      transfer_bank_name: input.transfer.bankName,
+      transfer_account_number: input.transfer.accountNumber,
+      transfer_account_name: input.transfer.accountName,
+    }),
+  });
+
+  if (response.status === 404) return null;
+
+  const result = (await response.json().catch(() => null)) as
+    | { slug?: string; error?: string }
+    | null;
+
+  if (!response.ok)
+    throw new Error(result?.error ?? "Could not save your Birthday Board");
+
+  return result?.slug ?? null;
 }
 
 function parseTransferDetails(input: {
@@ -942,7 +1008,6 @@ export const api = {
   ) {
     const client = requireSupabase();
     const user = await requireUser(client, "Sign in to update your Birthday Page");
-    await ensureLaunchProEntitlement(client);
     const name = text(input.name).trim();
     const date = text(input.date).trim();
     const headline = text(input.headline).trim();
@@ -953,26 +1018,44 @@ export const api = {
     const transfer = parseTransferDetails(input);
     if (!name || !date || !phone)
       throw new Error("Add a valid name, birthday date, and WhatsApp number");
-    const { error: pageError } = await client
-      .from("birthday_pages")
-      .update({
-        celebrant_name: name,
-        birthday_date: date,
-        headline: headline || `${name}'s Birthday`,
-        introduction: intro,
-        whatsapp_number: phone,
-        theme_key: theme,
-        transfer_bank_name: transfer.bankName,
-        transfer_account_number: transfer.accountNumber,
-        transfer_account_name: transfer.accountName,
-        status: "published",
-        published_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", pageId)
-      .select("slug")
-      .single();
-    if (pageError) throw pageError;
+
+    const edgeSaved = await saveBirthdayPageViaEdge({
+      pageId,
+      name,
+      date,
+      headline,
+      intro,
+      phone,
+      theme,
+      transfer,
+    });
+
+    if (!edgeSaved) {
+      await ensureLaunchProEntitlement(client);
+      const { error: pageError } = await client
+        .from("birthday_pages")
+        .update({
+          celebrant_name: name,
+          birthday_date: date,
+          headline: headline || `${name}'s Birthday`,
+          introduction: intro,
+          whatsapp_number: phone,
+          theme_key: theme,
+          transfer_bank_name: transfer.bankName,
+          transfer_account_number: transfer.accountNumber,
+          transfer_account_name: transfer.accountName,
+          status: "published",
+          published_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", pageId)
+        .select("slug")
+        .single();
+      if (pageError) {
+        if (String(pageError.message).includes("Huraay Pro")) throw proGateSetupError();
+        throw pageError;
+      }
+    }
 
     // Upload new photos if provided during edit
     if (input.photos && input.photos.length > 0) {
@@ -1204,8 +1287,10 @@ export const api = {
         .single(),
     );
 
-    if (error || !page)
+    if (error || !page) {
+      if (error && String(error.message).includes("Huraay Pro")) throw proGateSetupError();
       throw error ?? new Error("Could not create Birthday Page");
+    }
 
     try {
       for (const [index, file] of input.photos.entries()) {

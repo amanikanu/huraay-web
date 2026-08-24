@@ -36,5 +36,8 @@ verify_jwt = false
 [functions.grant-launch-pro]
 verify_jwt = false
 
+[functions.update-birthday-page]
+verify_jwt = false
+
 [functions.submit-birthday-transfer-receipt]
 verify_jwt = false

@@ -89,6 +89,28 @@ async function loadPublicWishes(client: ReturnType<typeof requireSupabase>, page
   return result.data ?? [];
 }
 
+async function ensureLaunchProEntitlement(client: ReturnType<typeof requireSupabase>) {
+  const { error: rpcError } = await client.rpc("grant_launch_pro");
+  if (!rpcError) return;
+
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return;
+
+  const {
+    data: { session },
+  } = await client.auth.getSession();
+  if (!session?.access_token) return;
+
+  await fetch(`${url}/functions/v1/grant-launch-pro`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  }).catch(() => undefined);
+}
+
 function parseTransferDetails(input: {
   transferBankName?: string | null;
   transferAccountNumber?: string | null;
@@ -916,6 +938,7 @@ export const api = {
   ) {
     const client = requireSupabase();
     const user = await requireUser(client, "Sign in to update your Birthday Page");
+    await ensureLaunchProEntitlement(client);
     const name = text(input.name).trim();
     const date = text(input.date).trim();
     const headline = text(input.headline).trim();
@@ -1095,6 +1118,7 @@ export const api = {
   }) {
     const client = requireSupabase();
     const user = await requireUser(client, "Sign in to publish your Birthday Page");
+    await ensureLaunchProEntitlement(client);
     const name = text(input.name).trim();
     const date = text(input.date).trim();
     const headline = text(input.headline).trim();

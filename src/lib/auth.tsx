@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
+      await api.grantLaunchPro();
       const data = await api.profile();
       setUserProfile({
         full_name: data.full_name || (currentSession.user.user_metadata?.full_name as string) || (currentSession.user.user_metadata?.display_name as string) || "",

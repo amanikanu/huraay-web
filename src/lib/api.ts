@@ -811,6 +811,10 @@ export const api = {
       .eq("id", itemId);
     if (error) throw error;
   },
+  async grantLaunchPro() {
+    const client = requireSupabase();
+    await ensureLaunchProEntitlement(client);
+  },
   async profile() {
     const client = requireSupabase();
     const user = await requireUser(client, "Sign in to view your profile");

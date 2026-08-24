@@ -6008,6 +6008,14 @@ body,
 }
 
 /* Custom Photo Upload for Wish Sheet */
+.photo-choice-or {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted, #666);
+  text-transform: lowercase;
+}
 .custom-photo-option {
   margin-top: 12px;
 }

@@ -6,6 +6,7 @@ import {
   ChartLine,
   Copy,
   CreditCard,
+  EnvelopeSimple,
   Eye,
   Gift,
   Heart,
@@ -34,6 +35,7 @@ type OwnerPage = {
 type OwnerWish = {
   id: string;
   visitor_name: string;
+  visitor_email?: string | null;
   message: string;
   visibility: "public" | "private";
   moderation_status: "pending" | "published" | "hidden";
@@ -409,7 +411,7 @@ function Wishes({ wishes, setWishes, setToast }: { wishes: OwnerWish[]; setWishe
   return <section className="owner-page-list">
     <div className="settings-nav">{(["all", "public", "private", "hidden"] as const).map((value) => <button className={filter === value ? "active" : ""} key={value} onClick={() => setFilter(value)}>{value}</button>)}</div>
     {filtered.length ? filtered.map((wish) => <article className="surface owner-page-card" key={wish.id}>
-      <div><span className="status-badge">{wish.visibility === "private" ? <><Lock /> private</> : wish.moderation_status}</span><h2>{wish.visitor_name}</h2><p>{wish.message}</p><small>{wish.birthday_pages?.celebrant_name} · {new Intl.DateTimeFormat("en-NG", { dateStyle: "medium" }).format(new Date(wish.created_at))}</small></div>
+      <div><span className="status-badge">{wish.visibility === "private" ? <><Lock /> private</> : wish.moderation_status}</span><h2>{wish.visitor_name}</h2><p>{wish.message}</p>{wish.visitor_email ? <p className="wish-contact-email"><EnvelopeSimple /> {wish.visitor_email}</p> : null}<small>{wish.birthday_pages?.celebrant_name} · {new Intl.DateTimeFormat("en-NG", { dateStyle: "medium" }).format(new Date(wish.created_at))}</small></div>
       <div className="owner-page-actions">{wish.moderation_status === "hidden" || wish.moderation_status === "pending" ? <Button variant="secondary" onClick={() => void update(wish, "published")}><Eye /> Publish</Button> : <Button variant="secondary" onClick={() => void update(wish, "hidden")}><Eye /> Hide</Button>}<Button variant="danger" onClick={() => void remove(wish.id)}><Trash /> Delete</Button></div>
     </article>) : <Empty icon={<Heart />} title="No wishes here" copy="Wishes matching this view will appear here." />}
   </section>;

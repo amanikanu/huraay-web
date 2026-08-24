@@ -323,20 +323,41 @@ export const api = {
     };
   },
   async uploadWishCustomPhoto(pageId: string, file: File) {
-    const client = requireSupabase();
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    if (!url || !key)
+      throw new Error("Supabase is not configured for photo uploads");
+
     const compressed = await compressImage(file, 1600, 0.82);
-    const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const path = `wishes/${pageId}/${crypto.randomUUID()}-${cleanName}`;
-    const { error } = await client.storage
-      .from("birthday-media")
-      .upload(path, compressed, { contentType: "image/webp", upsert: true });
-    if (error) throw error;
-    return path;
+    const form = new FormData();
+    form.append("page_id", pageId);
+    form.append(
+      "photo",
+      compressed,
+      compressed.name || "wish-photo.webp",
+    );
+
+    const response = await fetch(`${url}/functions/v1/upload-wish-photo`, {
+      method: "POST",
+      headers: { apikey: key },
+      body: form,
+    });
+    const result = (await response.json().catch(() => null)) as
+      | { path?: string; error?: string }
+      | null;
+
+    if (!response.ok)
+      throw new Error(result?.error ?? "Could not upload your photo");
+
+    if (!result?.path) throw new Error("Could not upload your photo");
+
+    return result.path;
   },
   async submitBirthdayWish(payload: {
     page_id: string;
     selected_photo_id: string;
     visitor_name: string;
+    visitor_email?: string | null;
     message: string;
     visibility: "public" | "private" | "anonymous";
     started_at: number;
@@ -357,6 +378,9 @@ export const api = {
     const dbVisitorName = isAnonymous
       ? rawName || "Someone who loves you"
       : rawName || "A friend";
+    const rawEmail = (payload.visitor_email ?? "").trim().toLowerCase();
+    const dbVisitorEmail =
+      rawEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) ? rawEmail : null;
 
     let photoId = payload.selected_photo_id || null;
     if (!photoId && !customPath) {
@@ -381,6 +405,7 @@ export const api = {
         ...(photoId ? { selected_photo_id: photoId } : {}),
         ...(customPath ? { custom_photo_path: customPath } : {}),
         visitor_name: dbVisitorName,
+        ...(dbVisitorEmail ? { visitor_email: dbVisitorEmail } : {}),
         message: payload.message,
         visibility: dbVisibility,
         moderation_status: "published",
@@ -591,7 +616,7 @@ export const api = {
     const { data, error } = await client
       .from("birthday_wishes")
       .select(
-        "id,page_id,visitor_name,message,visibility,moderation_status,created_at,birthday_pages!inner(celebrant_name,slug)",
+        "id,page_id,visitor_name,visitor_email,message,visibility,moderation_status,created_at,birthday_pages!inner(celebrant_name,slug)",
       )
       .order("created_at", { ascending: false });
     if (error) throw error;

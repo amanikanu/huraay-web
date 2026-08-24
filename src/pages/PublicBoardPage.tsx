@@ -531,6 +531,7 @@ function WishSheet({
     }
   }, [page.id]);
   const [name, setName] = useState(saved.name || "");
+  const [email, setEmail] = useState(saved.email || "");
   const [message, setMessage] = useState(saved.message || "");
   const [visibility, setVisibility] = useState<"public" | "private" | "anonymous">(
     saved.visibility === "private" ? "private" : saved.visibility === "anonymous" ? "anonymous" : "public",
@@ -549,6 +550,7 @@ function WishSheet({
         page_id: page.id,
         selected_photo_id: photo,
         visitor_name: name,
+        visitor_email: email,
         message,
         visibility,
         started_at: startedAt,
@@ -569,7 +571,7 @@ function WishSheet({
     } catch (err) {
       localStorage.setItem(
         `huraay_wish_draft_${page.id}`,
-        JSON.stringify({ name, message, visibility, photo }),
+        JSON.stringify({ name, email, message, visibility, photo }),
       );
       setError(
         err instanceof Error
@@ -599,9 +601,19 @@ function WishSheet({
             placeholder="Your name"
           />
         </Field>
+        <Field label="Email (optional)">
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            autoComplete="email"
+            placeholder="So the celebrant can thank you"
+          />
+          <small>Only the celebrant sees this. It is never shown on the public wall.</small>
+        </Field>
         {photos.length > 0 && (
           <fieldset className="photo-choice">
-            <legend>Choose a photo or upload your own</legend>
+            <legend>Choose a photo</legend>
             <div>
               {photos.map((item) => (
                 <button
@@ -619,6 +631,9 @@ function WishSheet({
                 </button>
               ))}
             </div>
+            <p className="photo-choice-or" aria-hidden="true">
+              or
+            </p>
             <div className="custom-photo-option">
               {customPhotoPreview ? (
                 <div className="custom-photo-preview">
@@ -638,7 +653,7 @@ function WishSheet({
               ) : (
                 <label className="upload-custom-photo-btn">
                   <Image />
-                  <span>Upload a photo from your phone</span>
+                  <span>Upload your own favourite</span>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/avif,image/heic"
@@ -674,7 +689,7 @@ function WishSheet({
             onClick={() => setVisibility("public")}
           >
             <strong>Public</strong>
-            <small>Everyone visiting this page can see your message.</small>
+            <small>Everyone visiting the birthday board can see your message.</small>
           </button>
           <button
             type="button"
@@ -682,7 +697,7 @@ function WishSheet({
             onClick={() => setVisibility("private")}
           >
             <strong>Private</strong>
-            <small>Only the Birthday Page owner can see your message.</small>
+            <small>Only the Birthday Board owner can see your message.</small>
           </button>
           <button
             type="button"
@@ -695,7 +710,7 @@ function WishSheet({
         </fieldset>
         {error && <div className="form-error">{error}</div>}
         <Button type="submit" disabled={busy || (!photo && !customPhotoFile)}>
-          {busy ? "Publishing your wish..." : "Publish Birthday Wish"}{" "}
+          {busy ? "Sending your wish..." : "Send Birthday Wish"}{" "}
           <Heart weight="fill" />
         </Button>
       </form>

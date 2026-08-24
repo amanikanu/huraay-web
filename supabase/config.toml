@@ -29,3 +29,9 @@ verify_jwt = true
 
 [functions.record-page-event]
 verify_jwt = false
+
+[functions.upload-wish-photo]
+verify_jwt = false
+
+[functions.submit-birthday-transfer-receipt]
+verify_jwt = false

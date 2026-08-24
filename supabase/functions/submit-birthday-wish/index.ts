@@ -16,6 +16,9 @@ serve(async (request: Request) => {
     return json({ error: "Please take a moment before publishing" }, 429);
   const name = String(body.visitor_name ?? "").trim();
   const message = String(body.message ?? "").trim();
+  const rawEmail = String(body.visitor_email ?? "").trim().toLowerCase();
+  const visitorEmail =
+    rawEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) ? rawEmail : null;
   const visibility = body.visibility;
   if (
     name.length < 2 ||
@@ -83,6 +86,7 @@ serve(async (request: Request) => {
       page_id: page.id,
       selected_photo_id: photo.id,
       visitor_name: name,
+      ...(visitorEmail ? { visitor_email: visitorEmail } : {}),
       message,
       visibility,
       moderation_status: "published",

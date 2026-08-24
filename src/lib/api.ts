@@ -32,33 +32,61 @@ function isMissingColumnError(error: { code?: string; message?: string } | null)
   );
 }
 
-async function loadPublicWishes(client: ReturnType<typeof requireSupabase>, pageId: string) {
-  const withCustomPhoto =
-    "id,visitor_name,message,selected_photo_id,custom_photo_path,created_at,pinned_at,visibility,moderation_status";
-  const withoutCustomPhoto =
-    "id,visitor_name,message,selected_photo_id,created_at,pinned_at,visibility,moderation_status";
+const CUSTOM_PHOTO_COLUMN_KEY = "huraay_has_custom_photo_path";
 
-  const result = await client
+function setCustomPhotoColumnSupport(supported: boolean) {
+  sessionStorage.setItem(CUSTOM_PHOTO_COLUMN_KEY, supported ? "yes" : "no");
+}
+
+async function wishCustomPhotoColumnExists(
+  client: ReturnType<typeof requireSupabase>,
+) {
+  const cached = sessionStorage.getItem(CUSTOM_PHOTO_COLUMN_KEY);
+  if (cached === "no") return false;
+  if (cached === "yes") return true;
+
+  const probe = await client
     .from("birthday_wishes")
-    .select(withCustomPhoto)
-    .eq("page_id", pageId)
-    .eq("visibility", "public")
-    .order("created_at", { ascending: false });
+    .select("custom_photo_path")
+    .limit(0);
 
-  if (!isMissingColumnError(result.error)) {
+  if (isMissingColumnError(probe.error)) {
+    setCustomPhotoColumnSupport(false);
+    return false;
+  }
+
+  setCustomPhotoColumnSupport(true);
+  return true;
+}
+
+async function loadPublicWishes(client: ReturnType<typeof requireSupabase>, pageId: string) {
+  const includeCustomPhoto = await wishCustomPhotoColumnExists(client);
+
+  if (includeCustomPhoto) {
+    const result = await client
+      .from("birthday_wishes")
+      .select(
+        "id,visitor_name,message,selected_photo_id,custom_photo_path,created_at,pinned_at,visibility,moderation_status",
+      )
+      .eq("page_id", pageId)
+      .eq("visibility", "public")
+      .order("created_at", { ascending: false });
+
     if (result.error) throw result.error;
     return result.data ?? [];
   }
 
-  const fallback = await client
+  const result = await client
     .from("birthday_wishes")
-    .select(withoutCustomPhoto)
+    .select(
+      "id,visitor_name,message,selected_photo_id,created_at,pinned_at,visibility,moderation_status",
+    )
     .eq("page_id", pageId)
     .eq("visibility", "public")
     .order("created_at", { ascending: false });
 
-  if (fallback.error) throw fallback.error;
-  return fallback.data ?? [];
+  if (result.error) throw result.error;
+  return result.data ?? [];
 }
 
 function parseTransferDetails(input: {
@@ -448,11 +476,16 @@ export const api = {
       .select("id")
       .single();
 
+    let savedCustomPhotoPath = Boolean(customPath);
+
     if (isMissingColumnError(error)) {
       const retryPayload = { ...insertPayload };
       const message = String(error?.message ?? "");
       if (message.includes("visitor_email")) delete retryPayload.visitor_email;
-      if (message.includes("custom_photo_path")) delete retryPayload.custom_photo_path;
+      if (message.includes("custom_photo_path")) {
+        delete retryPayload.custom_photo_path;
+        savedCustomPhotoPath = false;
+      }
 
       ({ data: wish, error } = await client
         .from("birthday_wishes")
@@ -462,6 +495,8 @@ export const api = {
     }
 
     if (error || !wish) throw error ?? new Error("Could not publish wish");
+
+    if (savedCustomPhotoPath) setCustomPhotoColumnSupport(true);
 
     const customUrl = customPath
       ? client.storage.from("birthday-media").getPublicUrl(customPath).data.publicUrl

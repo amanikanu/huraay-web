@@ -24,6 +24,40 @@ function text(value: unknown) {
   return String(value ?? "");
 }
 
+function isMissingColumnError(error: { code?: string; message?: string } | null) {
+  return (
+    error?.code === "PGRST204" ||
+    error?.code === "42703" ||
+    Boolean(error?.message?.includes("does not exist"))
+  );
+}
+
+async function loadPublicWishes(client: ReturnType<typeof requireSupabase>, pageId: string) {
+  const withCustomPhoto =
+    "id,visitor_name,message,selected_photo_id,custom_photo_path,created_at,pinned_at,visibility,moderation_status";
+  const withoutCustomPhoto =
+    "id,visitor_name,message,selected_photo_id,created_at,pinned_at,visibility,moderation_status";
+
+  let result = await client
+    .from("birthday_wishes")
+    .select(withCustomPhoto)
+    .eq("page_id", pageId)
+    .eq("visibility", "public")
+    .order("created_at", { ascending: false });
+
+  if (isMissingColumnError(result.error)) {
+    result = await client
+      .from("birthday_wishes")
+      .select(withoutCustomPhoto)
+      .eq("page_id", pageId)
+      .eq("visibility", "public")
+      .order("created_at", { ascending: false });
+  }
+
+  if (result.error) throw result.error;
+  return result.data ?? [];
+}
+
 function parseTransferDetails(input: {
   transferBankName?: string | null;
   transferAccountNumber?: string | null;
@@ -254,18 +288,13 @@ export const api = {
 
     if (pageErr || !page) throw pageErr ?? new Error("Birthday page not found");
 
-    const [{ data: photos }, { data: wishes }] = await Promise.all([
+    const [{ data: photos }, wishes] = await Promise.all([
       client
         .from("page_photos")
         .select("id,storage_path,alt_text,sort_order,is_cover")
         .eq("page_id", page.id)
         .order("sort_order"),
-      client
-        .from("birthday_wishes")
-        .select("id,visitor_name,message,selected_photo_id,custom_photo_path,created_at,pinned_at,visibility,moderation_status")
-        .eq("page_id", page.id)
-        .eq("visibility", "public")
-        .order("created_at", { ascending: false }),
+      loadPublicWishes(client, page.id),
     ]);
 
     const safePhotos = await Promise.all(
@@ -294,18 +323,19 @@ export const api = {
     const safeWishes = await Promise.all(
       (wishes ?? []).map(async (wish) => {
         let customUrl: string | null = null;
-        if (wish.custom_photo_path) {
+        if ("custom_photo_path" in wish && wish.custom_photo_path) {
+          const customPath = wish.custom_photo_path as string;
           try {
             const { data } = await client.storage
               .from("birthday-media")
-              .createSignedUrl(wish.custom_photo_path, 315360000);
+              .createSignedUrl(customPath, 315360000);
             if (data?.signedUrl) {
               customUrl = data.signedUrl;
             } else {
-              customUrl = client.storage.from("birthday-media").getPublicUrl(wish.custom_photo_path).data.publicUrl;
+              customUrl = client.storage.from("birthday-media").getPublicUrl(customPath).data.publicUrl;
             }
           } catch {
-            customUrl = client.storage.from("birthday-media").getPublicUrl(wish.custom_photo_path).data.publicUrl;
+            customUrl = client.storage.from("birthday-media").getPublicUrl(customPath).data.publicUrl;
           }
         }
         return {
@@ -398,20 +428,35 @@ export const api = {
       }
     }
 
-    const { data: wish, error } = await client
+    const insertPayload = {
+      page_id: payload.page_id,
+      ...(photoId ? { selected_photo_id: photoId } : {}),
+      ...(customPath ? { custom_photo_path: customPath } : {}),
+      visitor_name: dbVisitorName,
+      ...(dbVisitorEmail ? { visitor_email: dbVisitorEmail } : {}),
+      message: payload.message,
+      visibility: dbVisibility,
+      moderation_status: "published",
+    };
+
+    let { data: wish, error } = await client
       .from("birthday_wishes")
-      .insert({
-        page_id: payload.page_id,
-        ...(photoId ? { selected_photo_id: photoId } : {}),
-        ...(customPath ? { custom_photo_path: customPath } : {}),
-        visitor_name: dbVisitorName,
-        ...(dbVisitorEmail ? { visitor_email: dbVisitorEmail } : {}),
-        message: payload.message,
-        visibility: dbVisibility,
-        moderation_status: "published",
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
+
+    if (isMissingColumnError(error)) {
+      const retryPayload = { ...insertPayload };
+      const message = String(error?.message ?? "");
+      if (message.includes("visitor_email")) delete retryPayload.visitor_email;
+      if (message.includes("custom_photo_path")) delete retryPayload.custom_photo_path;
+
+      ({ data: wish, error } = await client
+        .from("birthday_wishes")
+        .insert(retryPayload)
+        .select("id")
+        .single());
+    }
 
     if (error || !wish) throw error ?? new Error("Could not publish wish");
 
@@ -613,12 +658,22 @@ export const api = {
   },
   async ownerWishes() {
     const client = requireSupabase();
-    const { data, error } = await client
+    let { data, error } = await client
       .from("birthday_wishes")
       .select(
         "id,page_id,visitor_name,visitor_email,message,visibility,moderation_status,created_at,birthday_pages!inner(celebrant_name,slug)",
       )
       .order("created_at", { ascending: false });
+
+    if (isMissingColumnError(error)) {
+      ({ data, error } = await client
+        .from("birthday_wishes")
+        .select(
+          "id,page_id,visitor_name,message,visibility,moderation_status,created_at,birthday_pages!inner(celebrant_name,slug)",
+        )
+        .order("created_at", { ascending: false }));
+    }
+
     if (error) throw error;
     return data ?? [];
   },

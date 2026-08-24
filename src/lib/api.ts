@@ -262,7 +262,7 @@ export const api = {
         .order("sort_order"),
       client
         .from("birthday_wishes")
-        .select("id,visitor_name,message,selected_photo_id,custom_photo_path,created_at,pinned_at,visibility,moderation_status")
+        .select("id,visitor_name,message,selected_photo_id,created_at,pinned_at,visibility,moderation_status")
         .eq("page_id", page.id)
         .eq("visibility", "public")
         .order("created_at", { ascending: false }),
@@ -291,29 +291,10 @@ export const api = {
       }),
     );
 
-    const safeWishes = await Promise.all(
-      (wishes ?? []).map(async (wish) => {
-        let customUrl: string | null = null;
-        if (wish.custom_photo_path) {
-          try {
-            const { data } = await client.storage
-              .from("birthday-media")
-              .createSignedUrl(wish.custom_photo_path, 315360000);
-            if (data?.signedUrl) {
-              customUrl = data.signedUrl;
-            } else {
-              customUrl = client.storage.from("birthday-media").getPublicUrl(wish.custom_photo_path).data.publicUrl;
-            }
-          } catch {
-            customUrl = client.storage.from("birthday-media").getPublicUrl(wish.custom_photo_path).data.publicUrl;
-          }
-        }
-        return {
-          ...wish,
-          custom_photo_url: customUrl,
-        };
-      }),
-    );
+    const safeWishes = (wishes ?? []).map((wish) => ({
+      ...wish,
+      custom_photo_url: null as string | null,
+    }));
 
     return {
       page,
@@ -385,15 +366,14 @@ export const api = {
         visibility: dbVisibility,
         moderation_status: "published",
       })
-      .select("id,custom_photo_path")
+      .select("id")
       .single();
 
     if (error || !wish) throw error ?? new Error("Could not publish wish");
 
-    let customUrl: string | null = null;
-    if (wish.custom_photo_path) {
-      customUrl = client.storage.from("birthday-media").getPublicUrl(wish.custom_photo_path).data.publicUrl;
-    }
+    const customUrl = customPath
+      ? client.storage.from("birthday-media").getPublicUrl(customPath).data.publicUrl
+      : null;
 
     sessionStorage.setItem(`huraay_access_${payload.page_id}`, token);
     sessionStorage.setItem(`huraay_name_${payload.page_id}`, payload.visitor_name);

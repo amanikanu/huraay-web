@@ -262,7 +262,7 @@ export const api = {
         .order("sort_order"),
       client
         .from("birthday_wishes")
-        .select("id,visitor_name,message,selected_photo_id,created_at,pinned_at,visibility,moderation_status")
+        .select("id,visitor_name,message,selected_photo_id,custom_photo_path,created_at,pinned_at,visibility,moderation_status")
         .eq("page_id", page.id)
         .eq("visibility", "public")
         .order("created_at", { ascending: false }),
@@ -291,10 +291,29 @@ export const api = {
       }),
     );
 
-    const safeWishes = (wishes ?? []).map((wish) => ({
-      ...wish,
-      custom_photo_url: null as string | null,
-    }));
+    const safeWishes = await Promise.all(
+      (wishes ?? []).map(async (wish) => {
+        let customUrl: string | null = null;
+        if (wish.custom_photo_path) {
+          try {
+            const { data } = await client.storage
+              .from("birthday-media")
+              .createSignedUrl(wish.custom_photo_path, 315360000);
+            if (data?.signedUrl) {
+              customUrl = data.signedUrl;
+            } else {
+              customUrl = client.storage.from("birthday-media").getPublicUrl(wish.custom_photo_path).data.publicUrl;
+            }
+          } catch {
+            customUrl = client.storage.from("birthday-media").getPublicUrl(wish.custom_photo_path).data.publicUrl;
+          }
+        }
+        return {
+          ...wish,
+          custom_photo_url: customUrl,
+        };
+      }),
+    );
 
     return {
       page,

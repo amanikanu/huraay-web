@@ -38,24 +38,27 @@ async function loadPublicWishes(client: ReturnType<typeof requireSupabase>, page
   const withoutCustomPhoto =
     "id,visitor_name,message,selected_photo_id,created_at,pinned_at,visibility,moderation_status";
 
-  let result = await client
+  const result = await client
     .from("birthday_wishes")
     .select(withCustomPhoto)
     .eq("page_id", pageId)
     .eq("visibility", "public")
     .order("created_at", { ascending: false });
 
-  if (isMissingColumnError(result.error)) {
-    result = await client
-      .from("birthday_wishes")
-      .select(withoutCustomPhoto)
-      .eq("page_id", pageId)
-      .eq("visibility", "public")
-      .order("created_at", { ascending: false });
+  if (!isMissingColumnError(result.error)) {
+    if (result.error) throw result.error;
+    return result.data ?? [];
   }
 
-  if (result.error) throw result.error;
-  return result.data ?? [];
+  const fallback = await client
+    .from("birthday_wishes")
+    .select(withoutCustomPhoto)
+    .eq("page_id", pageId)
+    .eq("visibility", "public")
+    .order("created_at", { ascending: false });
+
+  if (fallback.error) throw fallback.error;
+  return fallback.data ?? [];
 }
 
 function parseTransferDetails(input: {
@@ -658,24 +661,30 @@ export const api = {
   },
   async ownerWishes() {
     const client = requireSupabase();
-    let { data, error } = await client
+    const result = await client
       .from("birthday_wishes")
       .select(
         "id,page_id,visitor_name,visitor_email,message,visibility,moderation_status,created_at,birthday_pages!inner(celebrant_name,slug)",
       )
       .order("created_at", { ascending: false });
 
-    if (isMissingColumnError(error)) {
-      ({ data, error } = await client
-        .from("birthday_wishes")
-        .select(
-          "id,page_id,visitor_name,message,visibility,moderation_status,created_at,birthday_pages!inner(celebrant_name,slug)",
-        )
-        .order("created_at", { ascending: false }));
+    if (!isMissingColumnError(result.error)) {
+      if (result.error) throw result.error;
+      return result.data ?? [];
     }
 
-    if (error) throw error;
-    return data ?? [];
+    const fallback = await client
+      .from("birthday_wishes")
+      .select(
+        "id,page_id,visitor_name,message,visibility,moderation_status,created_at,birthday_pages!inner(celebrant_name,slug)",
+      )
+      .order("created_at", { ascending: false });
+
+    if (fallback.error) throw fallback.error;
+    return (fallback.data ?? []).map((wish) => ({
+      ...wish,
+      visitor_email: null,
+    }));
   },
   async moderateWish(
     wishId: string,
